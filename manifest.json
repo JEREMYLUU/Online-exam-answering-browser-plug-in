@@ -1,0 +1,56 @@
+{
+  "manifest_version": 3,
+  "name": "搜题答案助手",
+  "version": "2.2.0",
+  "description": "智能截图识别题目，支持多种AI模型（Novita AI、OpenAI、Anthropic、Google Gemini）获取准确答案",
+  "author": "搜题答案助手开发团队",
+  "homepage_url": "https://github.com/your-username/question-helper-extension",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting",
+    "desktopCapture",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://api.novita.ai/*",
+    "https://api.openai.com/*",
+    "https://api.anthropic.com/*",
+    "https://generativelanguage.googleapis.com/*",
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "搜题答案助手",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_end"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/*"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "minimum_chrome_version": "88"
+} 

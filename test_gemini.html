@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini API 测试工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"], textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4285f4;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #3367d6;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .step {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        .step h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Gemini API 连接测试工具</h1>
+        
+        <div class="step">
+            <h3>📋 使用步骤</h3>
+            <ol>
+                <li>获取您的 Gemini API Key（访问 <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a>）</li>
+                <li>将 API Key 粘贴到下面的输入框中</li>
+                <li>点击"测试网络连接"检查基本连接</li>
+                <li>点击"测试API路径"验证API端点格式</li>
+                <li>点击"获取模型列表"加载最新的可用模型</li>
+                <li>从下拉框中选择要测试的模型</li>
+                <li>点击"验证模型可用性"按钮检查哪些模型可用</li>
+                <li>输入测试消息，可选择包含题目的图片文件（仅支持图片的模型）</li>
+                <li>点击"测试文本生成"或"测试图片答题"按钮</li>
+                <li>查看结果和错误信息</li>
+            </ol>
+            <p><strong>📷 支持图片的模型：</strong>gemini-2.5-flash, gemini-2.5-pro, gemini-1.5-flash, gemini-1.5-pro, gemini-2.0系列等</p>
+            <p><strong>🎯 图片答题功能：</strong>AI会分析图片中的题目并给出详细解答，包括选择题原因、计算题步骤、问答题答案等</p>
+        </div>
+
+        <div class="form-group">
+            <label for="apiKey">🔑 Gemini API Key:</label>
+            <input type="text" id="apiKey" placeholder="输入您的 API Key（以 AIza 开头）" style="font-family: monospace;">
+        </div>
+
+        <div class="form-group">
+            <label for="modelSelect">🤖 选择模型:</label>
+            <select id="modelSelect" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                <option value="">请先获取模型列表</option>
+            </select>
+            <small style="color: #666;">点击"获取模型列表"按钮来加载最新的可用模型</small>
+        </div>
+
+        <div class="form-group">
+            <label for="testMessage">📝 测试消息:</label>
+            <textarea id="testMessage" rows="3" placeholder="输入要测试的消息">Hi</textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="imageFile">🎯 题目图片 (可选):</label>
+            <input type="file" id="imageFile" accept="image/*" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;" onchange="previewImage()">
+            <small style="color: #666;">选择包含题目的图片文件，AI会分析并给出详细解答</small>
+            <div id="imagePreview" style="margin-top: 10px; display: none;">
+                <img id="previewImg" style="max-width: 200px; max-height: 200px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+        </div>
+
+        <div>
+            <button onclick="testNetwork()" id="testNetworkBtn">🌐 测试网络连接</button>
+            <button onclick="testModels()" id="testModelsBtn">📋 获取模型列表</button>
+            <button onclick="testAPIPath()" id="testAPIPathBtn">🔗 测试API路径</button>
+            <button onclick="checkModelNames()" id="checkModelNamesBtn">🔍 检查模型名称</button>
+            <button onclick="testTextGeneration()" id="testTextBtn" disabled>💬 测试文本生成</button>
+            <button onclick="testImageGeneration()" id="testImageBtn" disabled>🎯 测试图片答题</button>
+            <button onclick="testSelectedModel()" id="testSelectedModelBtn">🎯 测试选中模型</button>
+            <button onclick="testTokenSettings()" id="testTokenBtn">🔢 测试Token设置</button>
+            <button onclick="validateModels()" id="validateModelsBtn">✅ 验证模型可用性</button>
+            <button onclick="clearResults()">🗑️ 清除结果</button>
+        </div>
+
+        <div id="result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        let modelsLoaded = false;
+
+        function showResult(message, type = 'info') {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = message;
+            resultDiv.className = `result ${type}`;
+            resultDiv.style.display = 'block';
+        }
+
+        function clearResults() {
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('imageFile').value = '';
+            document.getElementById('imagePreview').style.display = 'none';
+            modelsLoaded = false;
+            document.getElementById('testTextBtn').disabled = true;
+            document.getElementById('testImageBtn').disabled = true;
+        }
+
+        async function testNetwork() {
+            const btn = document.getElementById('testNetworkBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ 测试中...';
+
+            try {
+                showResult('🔄 正在测试网络连接...', 'info');
+
+                // 测试基本网络连接
+                const testUrls = [
+                    'https://www.google.com',
+                    'https://generativelanguage.googleapis.com',
+                    'https://makersuite.google.com'
+                ];
+
+                let resultMessage = `🌐 网络连接测试结果:\n\n`;
+                let successCount = 0;
+
+                for (const url of testUrls) {
+                    try {
+                        const startTime = Date.now();
+                        const response = await fetch(url, { 
+                            method: 'HEAD',
+                            mode: 'no-cors'
+                        });
+                        const endTime = Date.now();
+                        const duration = endTime - startTime;
+                        
+                        resultMessage += `✅ ${url} - 连接成功 (${duration}ms)\n`;
+                        successCount++;
+                    } catch (error) {
+                        resultMessage += `❌ ${url} - 连接失败: ${error.message}\n`;
+                    }
+                }
+
+                resultMessage += `\n📊 总结:\n`;
+                resultMessage += `- 成功连接: ${successCount}/${testUrls.length}\n`;
+
+                if (successCount === testUrls.length) {
+                    resultMessage += `- 网络连接正常 ✅\n`;
+                    resultMessage += `- 可以尝试获取模型列表\n`;
+                } else if (successCount > 0) {
+                    resultMessage += `- 网络连接部分正常 ⚠️\n`;
+                    resultMessage += `- 可能需要VPN或检查防火墙\n`;
+                } else {
+                    resultMessage += `- 网络连接异常 ❌\n`;
+                    resultMessage += `- 建议检查网络设置或使用VPN\n`;
+                }
+
+                showResult(resultMessage, successCount === testUrls.length ? 'success' : 'error');
+
+            } catch (error) {
+                console.error('网络测试失败:', error);
+                showResult(`❌ 网络测试失败: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🌐 测试网络连接';
+            }
+        }
+
+        async function testModels() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            
+            if (!apiKey) {
+                showResult('❌ 请输入 API Key', 'error');
+                return;
+            }
+
+            if (!apiKey.startsWith('AIza')) {
+                showResult('❌ API Key 格式错误！Gemini API Key 应该以 "AIza" 开头', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('testModelsBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ 获取中...';
+
+            try {
+                showResult('🔄 正在获取模型列表...', 'info');
+
+                const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+                console.log('请求URL:', url);
+
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                console.log('响应状态:', response.status);
+                console.log('响应头:', Object.fromEntries(response.headers.entries()));
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('错误响应:', errorText);
+                    
+                    let errorMessage = `❌ 获取模型列表失败 (${response.status})\n\n`;
+                    errorMessage += `响应内容:\n${errorText}\n\n`;
+                    
+                    if (response.status === 400) {
+                        errorMessage += `🔍 400错误诊断:\n`;
+                        errorMessage += `- API Key长度: ${apiKey.length}\n`;
+                        errorMessage += `- API Key前缀: ${apiKey.substring(0, 4)}\n`;
+                        errorMessage += `- 可能原因:\n`;
+                        errorMessage += `  1. API Key格式错误\n`;
+                        errorMessage += `  2. API Key未启用或已过期\n`;
+                        errorMessage += `  3. 未在Google Cloud Console启用Generative Language API\n`;
+                        errorMessage += `  4. 账户配额不足\n`;
+                    } else if (response.status === 401) {
+                        errorMessage += `🔍 401错误: API Key无效或已过期`;
+                    } else if (response.status === 403) {
+                        errorMessage += `🔍 403错误: API Key权限不足`;
+                    }
+                    
+                    showResult(errorMessage, 'error');
+                    return;
+                }
+
+                const data = await response.json();
+                console.log('响应数据:', data);
+
+                // 解析模型列表并填充到下拉框
+                const models = parseModelsFromResponse(data);
+                populateModelSelect(models);
+
+                let resultMessage = `✅ 模型列表获取成功！\n\n`;
+                resultMessage += `📊 响应信息:\n`;
+                resultMessage += `- 状态码: ${response.status}\n`;
+                resultMessage += `- 模型数量: ${models.length}\n\n`;
+
+                if (models.length > 0) {
+                    resultMessage += `📋 可用模型:\n`;
+                    models.forEach((model, index) => {
+                        resultMessage += `${index + 1}. ${model.name}${model.supportsImage ? ' 📷' : ''}\n`;
+                    });
+                    
+                    // 启用测试按钮
+                    document.getElementById('testTextBtn').disabled = false;
+                    document.getElementById('testImageBtn').disabled = false;
+                } else {
+                    resultMessage += `⚠️ 未找到可用模型`;
+                }
+
+                showResult(resultMessage, 'success');
+
+            } catch (error) {
+                console.error('获取模型列表失败:', error);
+                let errorMessage = `❌ 获取模型列表失败\n\n`;
+                errorMessage += `错误类型: ${error.name}\n`;
+                errorMessage += `错误信息: ${error.message}\n\n`;
+                
+                if (error.message.includes('fetch') || error.message.includes('Failed to fetch')) {
+                    errorMessage += `🔍 网络错误诊断:\n`;
+                    errorMessage += `- 检查网络连接\n`;
+                    errorMessage += `- 检查防火墙设置\n`;
+                    errorMessage += `- 尝试使用VPN\n`;
+                }
+                
+                showResult(errorMessage, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📋 获取模型列表';
+            }
+        }
+
+        async function testTextGeneration() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const modelId = document.getElementById('modelSelect').value;
+            
+            if (!apiKey) {
+                showResult('❌ 请输入 API Key', 'error');
+                return;
+            }
+            
+            if (!modelId) {
+                showResult('❌ 请先获取模型列表', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('testTextBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ 测试中...';
+
+            try {
+                showResult('🔄 正在测试文本生成...', 'info');
+
+                // 使用修正后的模型名称
+                const correctedModelId = modelId.startsWith('models/') ? modelId : `models/${modelId}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/${correctedModelId}:generateContent?key=${apiKey}`;
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: "Hi"
+                            }]
+                        }],
+                        generationConfig: {
+                            temperature: 0.7
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(`文本生成失败: ${response.status} - ${errorData.error?.message || response.statusText}`);
+                }
+
+                const data = await response.json();
+                
+                console.log('文本测试响应数据:', data);
+                console.log('响应数据结构:', {
+                    hasCandidates: !!data.candidates,
+                    candidatesLength: data.candidates?.length,
+                    firstCandidate: data.candidates?.[0],
+                    hasContent: !!data.candidates?.[0]?.content,
+                    hasParts: !!data.candidates?.[0]?.content?.parts,
+                    partsLength: data.candidates?.[0]?.content?.parts?.length,
+                    firstPart: data.candidates?.[0]?.content?.parts?.[0]
+                });
+                
+                if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+                    const candidate = data.candidates[0];
+                    
+                    // 检查是否有parts
+                    if (candidate.content.parts && candidate.content.parts[0]) {
+                        const text = candidate.content.parts[0].text;
+                        showResult(`✅ 文本生成成功!\n\n📝 模型回复:\n${text}`, 'success');
+                    } else if (candidate.finishReason === 'SAFETY') {
+                        showResult(`⚠️ 内容被安全过滤器阻止\n\nfinishReason: ${candidate.finishReason}`, 'error');
+                    } else {
+                        console.error('响应格式异常:', data);
+                        showResult(`❌ 响应格式异常\n\nfinishReason: ${candidate.finishReason}\n响应数据: ${JSON.stringify(data, null, 2)}`, 'error');
+                    }
+                } else {
+                    console.error('响应格式异常:', data);
+                    showResult(`❌ 响应格式异常\n\n响应数据: ${JSON.stringify(data, null, 2)}`, 'error');
+                }
+
+            } catch (error) {
+                console.error('文本生成测试失败:', error);
+                showResult(`❌ 文本生成测试失败: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '💬 测试文本生成';
+            }
+        }
+
+        async function testImageGeneration() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const modelId = document.getElementById('modelSelect').value;
+            const imageFile = document.getElementById('imageFile').files[0];
+            
+            if (!apiKey) {
+                showResult('❌ 请输入 API Key', 'error');
+                return;
+            }
+            
+            if (!modelId) {
+                showResult('❌ 请先获取模型列表', 'error');
+                return;
+            }
+
+            if (!imageFile) {
+                showResult('❌ 请选择图片文件', 'error');
+                return;
+            }
+
+            // 检查图片大小
+            const maxSizeMB = 10; // 10MB限制
+            if (imageFile.size > maxSizeMB * 1024 * 1024) {
+                showResult(`❌ 图片文件太大 (${(imageFile.size / 1024 / 1024).toFixed(2)}MB)\n\n建议选择小于${maxSizeMB}MB的图片文件`, 'error');
+                return;
+            }
+
+            const btn = document.getElementById('testImageBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ 测试中...';
+
+            try {
+                showResult('🔄 正在处理图片并测试...', 'info');
+
+                // 使用修正后的模型名称
+                const correctedModelId = modelId.startsWith('models/') ? modelId : `models/${modelId}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/${correctedModelId}:generateContent?key=${apiKey}`;
+                
+                // 压缩图片以减少token消耗
+                const compressedImageData = await compressImage(imageFile);
+
+                const requestBody = {
+                    contents: [{
+                        parts: [
+                            {
+                                text: "请仔细分析这张图片中的题目，并给出详细的解答。如果是选择题，请说明选择的原因；如果是计算题，请给出详细的解题步骤；如果是问答题，请给出完整的答案。"
+                            },
+                            {
+                                inlineData: {
+                                    mimeType: "image/jpeg",
+                                    data: compressedImageData
+                                }
+                            }
+                        ]
+                    }],
+                    generationConfig: {
+                        temperature: 0.7
+                    }
+                };
+
+                console.log('图片测试URL:', url);
+                console.log('图片测试模型:', correctedModelId);
+                console.log('图片文件:', imageFile.name, '类型:', imageFile.type, '大小:', imageFile.size);
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                console.log('图片响应状态:', response.status);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('图片错误响应:', errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+
+                const data = await response.json();
+                console.log('图片响应数据:', data);
+                
+                if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
+                    const text = data.candidates[0].content.parts[0].text;
+                    showResult(`✅ 图片答题成功!\n\n📝 AI解答:\n${text}`, 'success');
+                } else {
+                    console.error('图片响应格式异常:', data);
+                    showResult(`❌ 图片响应格式异常\n\n响应数据: ${JSON.stringify(data, null, 2)}`, 'error');
+                }
+
+            } catch (error) {
+                console.error('图片测试失败:', error);
+                showResult(`❌ 图片测试失败: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🎯 测试图片答题';
+            }
+        }
+
+        // 压缩图片函数
+        async function compressImage(file) {
+            return new Promise((resolve) => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                
+                img.onload = function() {
+                    // 计算压缩后的尺寸，最大800x800
+                    let { width, height } = img;
+                    const maxSize = 800;
+                    
+                    if (width > height) {
+                        if (width > maxSize) {
+                            height = (height * maxSize) / width;
+                            width = maxSize;
+                        }
+                    } else {
+                        if (height > maxSize) {
+                            width = (width * maxSize) / height;
+                            height = maxSize;
+                        }
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    
+                    // 绘制压缩后的图片
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // 转换为base64，质量0.8
+                    const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    const base64Data = compressedDataUrl.split(',')[1];
+                    
+                    resolve(base64Data);
+                };
+                
+                img.src = URL.createObjectURL(file);
+            });
+        }
+
+        async function validateModels() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            
+            if (!apiKey) {
+                showResult('❌ 请输入 API Key', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('validateModelsBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ 验证中...';
+
+            try {
+                showResult('🔄 正在验证模型可用性...', 'info');
+
+                const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`获取模型列表失败: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const models = parseModelsFromResponse(data);
+
+                if (models.length === 0) {
+                    showResult('❌ 未找到可用模型', 'error');
+                    return;
+                }
+
+                // 只测试主要的生成模型
+                const testableModels = models.filter(model => 
+                    model.name.includes('gemini') && 
+                    !model.name.includes('embedding') &&
+                    !model.name.includes('text-embedding') &&
+                    !model.name.includes('aqa') &&
+                    !model.name.includes('learnlm')
+                );
+
+                let resultMessage = `✅ 模型验证结果:\n\n`;
+                let validModels = 0;
+                let totalModels = testableModels.length;
+
+                for (const model of testableModels) {
+                    try {
+                        // 使用修正后的模型名称进行测试
+                        const testUrl = `https://generativelanguage.googleapis.com/v1beta/${model.correctedName}:generateContent?key=${apiKey}`;
+                        
+                        const testResponse = await fetch(testUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                contents: [{
+                                    parts: [{
+                                        text: "Hello, this is a test message."
+                                    }]
+                                }]
+                            })
+                        });
+
+                        if (testResponse.ok) {
+                            resultMessage += `✅ ${model.name} - 可用\n`;
+                            validModels++;
+                        } else if (testResponse.status === 429) {
+                            resultMessage += `⚠️ ${model.name} - 请求过于频繁 (429)\n`;
+                        } else if (testResponse.status === 404) {
+                            resultMessage += `❌ ${model.name} - 模型不存在 (404)\n`;
+                        } else {
+                            resultMessage += `❌ ${model.name} - 不可用 (${testResponse.status})\n`;
+                        }
+                        
+                        // 添加延迟避免429错误
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        
+                    } catch (error) {
+                        if (error.message.includes('429')) {
+                            resultMessage += `⚠️ ${model.name} - 请求过于频繁\n`;
+                        } else {
+                            resultMessage += `❌ ${model.name} - 连接失败\n`;
+                        }
+                    }
+                }
+
+                resultMessage += `\n📊 总结:\n`;
+                resultMessage += `- 测试模型: ${totalModels} 个\n`;
+                resultMessage += `- 可用模型: ${validModels} 个\n`;
+                resultMessage += `- 成功率: ${Math.round((validModels / totalModels) * 100)}%\n`;
+
+                if (validModels === 0) {
+                    resultMessage += `\n⚠️ 所有模型都不可用，请检查:\n`;
+                    resultMessage += `1. API Key 是否正确\n`;
+                    resultMessage += `2. 网络连接是否正常\n`;
+                    resultMessage += `3. API 配额是否充足\n`;
+                } else {
+                    resultMessage += `\n✅ 找到可用模型，可以正常使用\n`;
+                }
+
+                showResult(resultMessage, validModels > 0 ? 'success' : 'error');
+
+            } catch (error) {
+                console.error('模型验证失败:', error);
+                showResult(`❌ 模型验证失败: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '✅ 验证模型可用性';
+            }
+        }
+
+        async function testAPIPath() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            
+            if (!apiKey) {
+                showResult('❌ 请输入 API Key', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('testAPIPathBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ 测试中...';
+
+            try {
+                showResult('🔄 正在测试API路径格式...', 'info');
+
+                // 测试不同的API路径格式
+                const testPaths = [
+                    {
+                        name: '标准格式 (v1beta)',
+                        url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
+                    },
+                    {
+                        name: '替代格式 (v1beta)',
+                        url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash/generateContent?key=${apiKey}`
+                    },
+                    {
+                        name: 'v1格式',
+                        url: `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`
+                    }
+                ];
+
+                let resultMessage = `🔗 API路径测试结果:\n\n`;
+                let workingPaths = [];
+
+                for (const path of testPaths) {
+                    try {
+                        const testBody = {
+                            contents: [{
+                                parts: [{
+                                    text: "Hello"
+                                }]
+                            }],
+                            generationConfig: {
+                                temperature: 0.1
+                            }
+                        };
+
+                        console.log(`测试路径: ${path.name}`, path.url);
+
+                        const response = await fetch(path.url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(testBody)
+                        });
+
+                        if (response.ok) {
+                            resultMessage += `✅ ${path.name} - 工作正常\n`;
+                            workingPaths.push(path);
+                        } else {
+                            resultMessage += `❌ ${path.name} - 状态码: ${response.status}\n`;
+                        }
+                    } catch (error) {
+                        resultMessage += `❌ ${path.name} - 连接失败: ${error.message}\n`;
+                    }
+
+                    // 添加延迟
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+
+                resultMessage += `\n📊 总结:\n`;
+                resultMessage += `- 工作路径: ${workingPaths.length}/${testPaths.length}\n`;
+
+                if (workingPaths.length > 0) {
+                    resultMessage += `- 推荐使用: ${workingPaths[0].name}\n`;
+                    resultMessage += `- 可以继续测试模型列表\n`;
+                } else {
+                    resultMessage += `- 所有路径都失败\n`;
+                    resultMessage += `- 可能原因:\n`;
+                    resultMessage += `  1. API版本不匹配\n`;
+                    resultMessage += `  2. 网络连接问题\n`;
+                    resultMessage += `  3. API Key权限不足\n`;
+                }
+
+                showResult(resultMessage, workingPaths.length > 0 ? 'success' : 'error');
+
+            } catch (error) {
+                console.error('API路径测试失败:', error);
+                showResult(`❌ API路径测试失败: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔗 测试API路径';
+            }
+        }
+
+        // 解析API响应中的模型列表
+        function parseModelsFromResponse(data) {
+            const models = [];
+            
+            console.log('解析模型数据:', data);
+            
+            // 已知不存在的模型名称
+            const invalidModels = [
+                'gemini-1.0-pro-vision-latest',
+                'gemini-pro-vision',
+                'gemini-2.0-flash-preview-image-generation',
+                'gemini-2.5-flash-preview-tts',
+                'gemini-2.5-pro-preview-tts',
+                'gemini-exp-1206',
+                'gemini-1.0-pro-vision',
+                'gemini-1.0-pro',
+                'gemini-1.0-flash',
+                'gemini-1.0-flash-exp',
+                'gemini-1.0-pro-exp',
+                'gemini-1.0-pro-vision-exp'
+            ];
+            
+            if (data.models && Array.isArray(data.models)) {
+                data.models.forEach(model => {
+                    // 跳过无效模型
+                    if (invalidModels.includes(model.name)) {
+                        console.log(`跳过无效模型: ${model.name}`);
+                        return;
+                    }
+                    
+                    // 检查模型是否支持图片（基于模型名称特征）
+                    const supportsImage = model.name.includes('vision') || 
+                                        model.name.includes('1.5-pro') || 
+                                        model.name.includes('1.5-flash') ||
+                                        model.name.includes('2.0') ||
+                                        model.name.includes('2.5') ||
+                                        model.name.includes('ultra');
+                    
+                    // 修正模型名称格式
+                    let correctedName = model.name;
+                    
+                    // 如果模型名称包含完整路径，提取模型ID
+                    if (correctedName.includes('/')) {
+                        correctedName = correctedName.split('/').pop();
+                    }
+                    
+                    // 确保模型名称格式正确
+                    if (!correctedName.startsWith('models/')) {
+                        correctedName = `models/${correctedName}`;
+                    }
+                    
+                    models.push({
+                        id: correctedName,
+                        name: model.name,
+                        originalName: model.name,
+                        correctedName: correctedName,
+                        supportsImage: supportsImage
+                    });
+                });
+            } else if (data.data && Array.isArray(data.data)) {
+                // 另一种可能的响应格式
+                data.data.forEach(model => {
+                    // 跳过无效模型
+                    if (invalidModels.includes(model.name)) {
+                        console.log(`跳过无效模型: ${model.name}`);
+                        return;
+                    }
+                    
+                    const supportsImage = model.name.includes('vision') || 
+                                        model.name.includes('1.5-pro') || 
+                                        model.name.includes('1.5-flash') ||
+                                        model.name.includes('2.0') ||
+                                        model.name.includes('2.5') ||
+                                        model.name.includes('ultra');
+                    
+                    // 修正模型名称格式
+                    let correctedName = model.name;
+                    
+                    if (correctedName.includes('/')) {
+                        correctedName = correctedName.split('/').pop();
+                    }
+                    
+                    if (!correctedName.startsWith('models/')) {
+                        correctedName = `models/${correctedName}`;
+                    }
+                    
+                    models.push({
+                        id: correctedName,
+                        name: model.name,
+                        originalName: model.name,
+                        correctedName: correctedName,
+                        supportsImage: supportsImage
+                    });
+                });
+            } else {
+                console.warn('未识别的响应格式:', data);
+            }
+            
+            console.log(`解析到 ${models.length} 个模型:`, models);
+            return models;
+        }
+
+        // 填充模型选择框
+        function populateModelSelect(models) {
+            const modelSelect = document.getElementById('modelSelect');
+            modelSelect.innerHTML = '';
+            
+            if (models.length === 0) {
+                modelSelect.innerHTML = '<option value="">未找到可用模型</option>';
+                return;
+            }
+            
+            // 按支持图片的模型优先排序
+            const sortedModels = models.sort((a, b) => {
+                if (a.supportsImage && !b.supportsImage) return -1;
+                if (!a.supportsImage && b.supportsImage) return 1;
+                return a.name.localeCompare(b.name);
+            });
+            
+            sortedModels.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.id;
+                option.textContent = model.name + (model.supportsImage ? ' 📷' : '');
+                modelSelect.appendChild(option);
+            });
+            
+            // 选择第一个模型
+            if (sortedModels.length > 0) {
+                modelSelect.value = sortedModels[0].id;
+                // 触发change事件来设置图片测试按钮状态
+                modelSelect.dispatchEvent(new Event('change'));
+            }
+            
+            modelsLoaded = true;
+            document.getElementById('testTextBtn').disabled = false;
+        }
+
+        // 页面加载时的提示
+        window.onload = function() {
+            showResult('👋 欢迎使用 Gemini API 测试工具！\n\n请按照上方步骤进行测试。', 'info');
+            
+            // 添加模型选择变化监听
+            document.getElementById('modelSelect').addEventListener('change', function() {
+                const selectedModel = this.value;
+                const testImageBtn = document.getElementById('testImageBtn');
+                
+                if (selectedModel && (selectedModel.includes('1.5-pro') || selectedModel.includes('1.5-flash') || selectedModel.includes('2.0') || selectedModel.includes('2.5') || selectedModel.includes('ultra'))) {
+                    testImageBtn.disabled = false;
+                    testImageBtn.title = '此模型支持图片输入';
+                } else {
+                    testImageBtn.disabled = true;
+                    testImageBtn.title = '此模型不支持图片输入';
+                }
+            });
+        };
+
+        async function checkModelNames() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            
+            if (!apiKey) {
+                showResult('❌ 请输入 API Key', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('checkModelNamesBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ 检查中...';
+
+            try {
+                showResult('🔄 正在检查模型名称格式...', 'info');
+
+                const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`获取模型列表失败: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const models = parseModelsFromResponse(data);
+
+                if (models.length === 0) {
+                    showResult('❌ 未找到可用模型', 'error');
+                    return;
+                }
+
+                let resultMessage = `🔍 模型名称检查结果:\n\n`;
+                let nameIssues = 0;
+
+                // 只检查主要的生成模型
+                const testableModels = models.filter(model => 
+                    model.name.includes('gemini') && 
+                    !model.name.includes('embedding') &&
+                    !model.name.includes('text-embedding') &&
+                    !model.name.includes('aqa') &&
+                    !model.name.includes('learnlm')
+                );
+
+                resultMessage += `📋 检查 ${testableModels.length} 个主要生成模型:\n\n`;
+
+                for (const model of testableModels) {
+                    const hasIssue = model.originalName !== model.correctedName;
+                    
+                    if (hasIssue) {
+                        resultMessage += `⚠️ ${model.name}\n`;
+                        resultMessage += `   原始: ${model.originalName}\n`;
+                        resultMessage += `   修正: ${model.correctedName}\n`;
+                        resultMessage += `   问题: 名称格式需要修正\n\n`;
+                        nameIssues++;
+                    } else {
+                        resultMessage += `✅ ${model.name} - 格式正确\n`;
+                    }
+                }
+
+                resultMessage += `📊 总结:\n`;
+                resultMessage += `- 检查模型: ${testableModels.length} 个\n`;
+                resultMessage += `- 名称问题: ${nameIssues} 个\n`;
+
+                if (nameIssues > 0) {
+                    resultMessage += `- 建议: 使用修正后的模型名称进行测试\n`;
+                } else {
+                    resultMessage += `- 所有模型名称格式都正确 ✅\n`;
+                }
+
+                showResult(resultMessage, nameIssues === 0 ? 'success' : 'error');
+
+            } catch (error) {
+                console.error('模型名称检查失败:', error);
+                showResult(`❌ 模型名称检查失败: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔍 检查模型名称';
+            }
+        }
+
+        async function testSelectedModel() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const modelId = document.getElementById('modelSelect').value;
+            
+            if (!apiKey) {
+                showResult('❌ 请输入 API Key', 'error');
+                return;
+            }
+            
+            if (!modelId) {
+                showResult('❌ 请先获取模型列表', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('testSelectedModelBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ 测试中...';
+
+            try {
+                showResult('🔄 正在测试选中模型...', 'info');
+
+                // 使用修正后的模型名称
+                const correctedModelId = modelId.startsWith('models/') ? modelId : `models/${modelId}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/${correctedModelId}:generateContent?key=${apiKey}`;
+                
+                console.log('测试URL:', url);
+                console.log('测试模型:', correctedModelId);
+                
+                const requestBody = {
+                    contents: [{
+                        parts: [{
+                            text: "Hello"
+                        }]
+                    }],
+                    generationConfig: {
+                        temperature: 0.7
+                    }
+                };
+                
+                console.log('请求体:', requestBody);
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                console.log('响应状态:', response.status);
+                console.log('响应头:', response.headers);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('错误响应:', errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+
+                const data = await response.json();
+                console.log('响应数据:', data);
+                
+                if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
+                    const text = data.candidates[0].content.parts[0].text;
+                    showResult(`✅ 模型测试成功!\n\n📝 模型回复:\n${text}`, 'success');
+                } else {
+                    console.error('响应格式异常:', data);
+                    showResult(`❌ 响应格式异常\n\n响应数据: ${JSON.stringify(data, null, 2)}`, 'error');
+                }
+
+            } catch (error) {
+                console.error('模型测试失败:', error);
+                showResult(`❌ 模型测试失败: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🎯 测试选中模型';
+            }
+        }
+
+        async function testTokenSettings() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const modelId = document.getElementById('modelSelect').value;
+            
+            if (!apiKey) {
+                showResult('❌ 请输入 API Key', 'error');
+                return;
+            }
+            
+            if (!modelId) {
+                showResult('❌ 请先获取模型列表', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('testTokenBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ 测试中...';
+
+            try {
+                showResult('🔄 正在测试不同的Token设置...', 'info');
+
+                const tokenSettings = [5, 10, 20, 50, 100];
+                const correctedModelId = modelId.startsWith('models/') ? modelId : `models/${modelId}`;
+                
+                let resultMessage = `🔢 Token设置测试结果:\n\n`;
+                let workingTokens = [];
+
+                for (const maxTokens of tokenSettings) {
+                    try {
+                        const url = `https://generativelanguage.googleapis.com/v1beta/${correctedModelId}:generateContent?key=${apiKey}`;
+                        
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                contents: [{
+                                    parts: [{
+                                        text: "Hi"
+                                    }]
+                                }],
+                                generationConfig: {
+                                    maxOutputTokens: maxTokens,
+                                    temperature: 0.7
+                                }
+                            })
+                        });
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            const candidate = data.candidates?.[0];
+                            
+                            if (candidate?.content?.parts?.[0]?.text) {
+                                const text = candidate.content.parts[0].text;
+                                resultMessage += `✅ ${maxTokens} tokens - 成功\n`;
+                                resultMessage += `   回复: ${text.substring(0, 50)}${text.length > 50 ? '...' : ''}\n\n`;
+                                workingTokens.push(maxTokens);
+                            } else {
+                                resultMessage += `❌ ${maxTokens} tokens - 格式异常\n\n`;
+                            }
+                        } else {
+                            resultMessage += `❌ ${maxTokens} tokens - HTTP ${response.status}\n\n`;
+                        }
+                        
+                        // 添加延迟
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                        
+                    } catch (error) {
+                        resultMessage += `❌ ${maxTokens} tokens - 错误: ${error.message}\n\n`;
+                    }
+                }
+
+                resultMessage += `📊 总结:\n`;
+                resultMessage += `- 可用Token设置: ${workingTokens.length > 0 ? workingTokens.join(', ') : '无'}\n`;
+                
+                if (workingTokens.length > 0) {
+                    resultMessage += `- 推荐设置: ${workingTokens[0]} tokens\n`;
+                } else {
+                    resultMessage += `- 所有设置都失败，请检查模型和API Key\n`;
+                }
+
+                showResult(resultMessage, workingTokens.length > 0 ? 'success' : 'error');
+
+            } catch (error) {
+                console.error('Token设置测试失败:', error);
+                showResult(`❌ Token设置测试失败: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔢 测试Token设置';
+            }
+        }
+
+        function previewImage() {
+            const imageFile = document.getElementById('imageFile').files[0];
+            if (imageFile) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const imagePreview = document.getElementById('imagePreview');
+                    imagePreview.style.display = 'block';
+                    const previewImg = document.getElementById('previewImg');
+                    previewImg.src = e.target.result;
+                };
+                reader.readAsDataURL(imageFile);
+            }
+        }
+    </script>
+</body>
+</html>

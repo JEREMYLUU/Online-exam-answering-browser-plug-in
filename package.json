@@ -1,0 +1,38 @@
+{
+  "name": "question-helper-extension",
+  "version": "2.2.0",
+  "description": "智能截图识别题目，支持多种AI模型获取准确答案的Chrome插件",
+  "main": "build.js",
+  "scripts": {
+    "build": "node build.js",
+    "icons": "echo '请打开 create_icons.html 生成图标'",
+    "test": "echo '请在Chrome中测试插件功能'",
+    "clean": "rm -rf *.zip",
+    "package": "npm run clean && npm run build"
+  },
+  "keywords": [
+    "chrome-extension",
+    "ai",
+    "question-helper",
+    "novita-ai",
+    "openai",
+    "anthropic",
+    "google-gemini"
+  ],
+  "author": "搜题答案助手开发团队",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/question-helper-extension.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/question-helper-extension/issues"
+  },
+  "homepage": "https://github.com/your-username/question-helper-extension#readme",
+  "devDependencies": {
+    "archiver": "^5.3.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+} 

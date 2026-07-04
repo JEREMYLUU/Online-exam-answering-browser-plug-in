@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API 申请教程 - 搜题答案助手</title>
+  <style>
+    :root {
+      --primary-color: #4F46E5;
+      --text-color: #333;
+      --bg-color: #f9fafb;
+      --card-bg: #ffffff;
+    }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text-color);
+      background-color: var(--bg-color);
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      color: var(--primary-color);
+      margin-bottom: 40px;
+    }
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      padding: 30px;
+      margin-bottom: 30px;
+    }
+    .card h2 {
+      margin-top: 0;
+      border-bottom: 2px solid #f3f4f6;
+      padding-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .step {
+      margin-bottom: 20px;
+    }
+    .step-title {
+      font-weight: bold;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+    }
+    .step-number {
+      background-color: var(--primary-color);
+      color: white;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      margin-right: 10px;
+    }
+    a.btn {
+      display: inline-block;
+      background-color: var(--primary-color);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+    a.btn:hover {
+      background-color: #4338CA;
+    }
+    code {
+      background-color: #f3f4f6;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Consolas', monospace;
+      color: #c7254e;
+    }
+    .note {
+      background-color: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      padding: 15px;
+      margin-top: 10px;
+      font-size: 14px;
+      color: #92400e;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>API Key 申请教程</h1>
+
+    <div class="note" style="margin-bottom: 30px;">
+      免费额度和免费模型会随平台政策变化，最终以各平台控制台为准。插件会尽量显示平台返回的全部模型列表，不替用户判断模型类型；截图能否成功以官网模型能力说明和实际 API 返回为准。
+    </div>
+
+    <div class="card">
+      <h2>⚙️ 插件里为什么有两套 API 配置？</h2>
+      <div class="step">
+        <div class="step-title"><span class="step-number">文</span>文字搜题 API</div>
+        <p>用于“选中文字后点击 ?”。这里可以使用便宜或免费的文本模型，例如 DeepSeek、Qwen、Groq、Kimi、Mistral Small 等。</p>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">图</span>截图识题 API</div>
+        <p>用于页面右上角“一键截图识题”。插件会显示平台返回的模型列表，也支持手动填写官网模型 Code；如果模型不支持图片，平台 API 会返回错误。</p>
+      </div>
+      <div class="note">
+        推荐新手配置：文字搜题选 DeepSeek 或 Groq；截图识题可先试 Google Gemini。官网“免费额度/全部模型”页面里的模型 Code 都可以手动填写；是否适合截图，以官网对该模型的能力说明为准。
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🆓 免费额度优先推荐</h2>
+      <div class="step">
+        <div class="step-title"><span class="step-number">1</span>Google Gemini</div>
+        <p><strong>首选：</strong>官方提供 Free Tier，适合一键截图识题。插件里选择 <strong>Google Gemini (免费额度 / 截图优先)</strong>，模型优先选 Gemini Flash / Flash Lite。</p>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">2</span>OpenRouter</div>
+        <p><strong>备选：</strong>可以使用免费模型或 <code>openrouter/free</code> 路由，一个 Key 可以试多家模型。免费模型可能限流，稳定性取决于平台当前可用模型。</p>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">3</span>SiliconFlow 硅基流动</div>
+        <p><strong>国内友好：</strong>提供免费模型，适合先试 DeepSeek/Qwen；截图识题可按官网模型能力选择对应模型 Code。</p>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">4</span>阿里云百炼 / 通义千问</div>
+        <p><strong>新人友好：</strong>新用户通常有免费额度，国内访问稳定。官网页面显示的模型 Code 可以直接填入插件。</p>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">5</span>Groq / Mistral</div>
+        <p><strong>补充选择：</strong>Groq 适合高速文本搜题；Mistral 的 Free mode 可试 Mistral/Pixtral。若要截图识题，请确认当前模型支持图片。</p>
+      </div>
+    </div>
+
+    <!-- DeepSeek -->
+    <div class="card">
+      <h2>🚀 DeepSeek (深度求索) <span style="font-size:12px; color:#666; font-weight:normal">付费低成本，适合文本题</span></h2>
+      <div class="step">
+        <div class="step-title"><span class="step-number">1</span>注册账号</div>
+        <p>访问 DeepSeek 开放平台，注册或登录账号。</p>
+        <a href="https://platform.deepseek.com/" target="_blank" class="btn">前往 DeepSeek 平台</a>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">2</span>创建 API Key</div>
+        <p>在左侧菜单找到“API Keys”，点击“创建 API Key”。</p>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">3</span>配置插件</div>
+        <p>复制生成的 Key (以 <code>sk-</code> 开头)。</p>
+        <p>在插件中选择 <strong>DeepSeek (深度求索)</strong>，配置如下：</p>
+        <ul>
+          <li><strong>API端点:</strong> <code>https://api.deepseek.com/chat/completions</code></li>
+          <li><strong>模型:</strong> <code>deepseek-chat</code> (V3) 或 <code>deepseek-reasoner</code> (R1)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- OpenRouter -->
+    <div class="card">
+      <h2>🆓 OpenRouter <span style="font-size:12px; color:#666; font-weight:normal">免费模型 / 一个 Key 使用多家模型</span></h2>
+      <div class="step">
+        <div class="step-title"><span class="step-number">1</span>注册账号</div>
+        <p>访问 OpenRouter，登录后进入 Keys 页面。</p>
+        <a href="https://openrouter.ai/settings/keys" target="_blank" class="btn">前往 OpenRouter Keys</a>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">2</span>创建 API Key</div>
+        <p>点击创建 Key，复制生成的密钥。</p>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">3</span>配置插件</div>
+        <p>在插件中选择 <strong>OpenRouter (聚合平台)</strong>。</p>
+        <ul>
+          <li><strong>API端点:</strong> <code>https://openrouter.ai/api/v1/chat/completions</code></li>
+          <li><strong>模型:</strong> 可先选 <code>openrouter/free</code> 或下拉框里的免费模型；截图识题是否可用以 OpenRouter 模型说明为准。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- SiliconFlow -->
+    <div class="card">
+      <h2>🆓 SiliconFlow (硅基流动) <span style="font-size:12px; color:#666; font-weight:normal">免费模型，国内友好</span></h2>
+      <div class="step">
+        <div class="step-title"><span class="step-number">1</span>登录控制台</div>
+        <p>访问硅基流动控制台，进入 API 密钥页面。</p>
+        <a href="https://cloud.siliconflow.cn/account/ak" target="_blank" class="btn">前往 SiliconFlow API Keys</a>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">2</span>创建 Key</div>
+        <p>创建并复制 API Key。</p>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">3</span>配置插件</div>
+        <p>在插件中选择 <strong>SiliconFlow (硅基流动)</strong>。</p>
+        <ul>
+          <li><strong>API端点:</strong> <code>https://api.siliconflow.cn/v1/chat/completions</code></li>
+          <li><strong>模型:</strong> 优先选择平台标注的免费模型；也可以直接手动填写官网模型 Code。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Qwen -->
+    <div class="card">
+      <h2>🆓 阿里云百炼 / 通义千问 <span style="font-size:12px; color:#666; font-weight:normal">新人免费额度</span></h2>
+      <div class="step">
+        <div class="step-title"><span class="step-number">1</span>开通百炼</div>
+        <p>登录阿里云百炼控制台，进入 API Key 管理页面。</p>
+        <a href="https://bailian.console.aliyun.com/?apiKey=1" target="_blank" class="btn">前往百炼 API Key</a>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">2</span>创建 API Key</div>
+        <p>创建 Key 后复制保存。</p>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">3</span>配置插件</div>
+        <p>在插件中选择 <strong>阿里云百炼 / 通义千问</strong>。</p>
+        <ul>
+          <li><strong>API端点:</strong> <code>https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions</code></li>
+          <li><strong>模型:</strong> 可直接填写百炼官网显示的模型 Code；截图能力以官网模型说明为准。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Moonshot -->
+    <div class="card">
+      <h2>🌙 Moonshot / Kimi</h2>
+      <div class="step">
+        <div class="step-title"><span class="step-number">1</span>进入控制台</div>
+        <p>访问 Moonshot 控制台的 API Keys 页面。</p>
+        <a href="https://platform.moonshot.cn/console/api-keys" target="_blank" class="btn">前往 Moonshot API Keys</a>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">2</span>创建 Key</div>
+        <p>点击创建 API Key，复制密钥。</p>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">3</span>配置插件</div>
+        <p>在插件中选择 <strong>Moonshot / Kimi</strong>。</p>
+        <ul>
+          <li><strong>API端点:</strong> <code>https://api.moonshot.cn/v1/chat/completions</code></li>
+          <li><strong>模型:</strong> 自动加载或使用 <code>moonshot-v1-8k</code>、<code>moonshot-v1-32k</code>、<code>moonshot-v1-128k</code>。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Zhipu -->
+    <div class="card">
+      <h2>✨ 智谱 GLM</h2>
+      <div class="step">
+        <div class="step-title"><span class="step-number">1</span>进入开放平台</div>
+        <p>登录智谱开放平台，进入 API Keys 管理页面。</p>
+        <a href="https://bigmodel.cn/usercenter/proj-mgmt/apikeys" target="_blank" class="btn">前往智谱 API Keys</a>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">2</span>创建 Key</div>
+        <p>创建密钥并复制。</p>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">3</span>配置插件</div>
+        <p>在插件中选择 <strong>智谱 GLM</strong>。</p>
+        <ul>
+          <li><strong>API端点:</strong> <code>https://open.bigmodel.cn/api/paas/v4/chat/completions</code></li>
+          <li><strong>模型:</strong> 可直接填写智谱官网显示的模型 Code；截图能力以官网模型说明为准。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Volcengine -->
+    <div class="card">
+      <h2>🔥 火山方舟 / 豆包</h2>
+      <div class="step">
+        <div class="step-title"><span class="step-number">1</span>开通火山方舟</div>
+        <p>登录火山引擎控制台，进入方舟 API Key 页面。</p>
+        <a href="https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey" target="_blank" class="btn">前往火山方舟 API Key</a>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">2</span>创建 Key</div>
+        <p>创建 API Key 并复制。</p>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">3</span>配置插件</div>
+        <p>在插件中选择 <strong>火山方舟 / 豆包</strong>。</p>
+        <ul>
+          <li><strong>API端点:</strong> <code>https://ark.cn-beijing.volces.com/api/v3/chat/completions</code></li>
+          <li><strong>模型:</strong> 选择已开通的豆包模型；截图能力以方舟控制台模型说明为准。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- MiniMax -->
+    <div class="card">
+      <h2>🎭 MiniMax</h2>
+      <div class="step">
+        <div class="step-title"><span class="step-number">1</span>登录平台</div>
+        <p>进入 MiniMax 开放平台的接口密钥页面。</p>
+        <a href="https://platform.minimaxi.com/user-center/basic-information/interface-key" target="_blank" class="btn">前往 MiniMax API Key</a>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">2</span>创建 Key</div>
+        <p>创建并复制 API Key。</p>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">3</span>配置插件</div>
+        <p>在插件中选择 <strong>MiniMax</strong>。</p>
+        <ul>
+          <li><strong>API端点:</strong> <code>https://api.minimaxi.com/v1/chat/completions</code></li>
+          <li><strong>模型:</strong> 优先选择 <code>MiniMax-M3</code>；文本题也可选择 M2.7/M2.5 系列。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Groq -->
+    <div class="card">
+      <h2>🆓 Groq <span style="font-size:12px; color:#666; font-weight:normal">免费试用，速度快，适合文本题</span></h2>
+      <div class="step">
+        <div class="step-title"><span class="step-number">1</span>进入控制台</div>
+        <p>访问 Groq Console 的 API Keys 页面。</p>
+        <a href="https://console.groq.com/keys" target="_blank" class="btn">前往 Groq API Keys</a>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">2</span>创建 Key</div>
+        <p>创建并复制 API Key。</p>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">3</span>配置插件</div>
+        <p>在插件中选择 <strong>Groq</strong>。</p>
+        <ul>
+          <li><strong>API端点:</strong> <code>https://api.groq.com/openai/v1/chat/completions</code></li>
+          <li><strong>模型:</strong> 可直接填写 Groq 控制台显示的模型 Code；截图能力以模型说明为准。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- xAI -->
+    <div class="card">
+      <h2>𝕏 xAI</h2>
+      <div class="step">
+        <div class="step-title"><span class="step-number">1</span>进入控制台</div>
+        <p>访问 xAI Console，创建 API Key。</p>
+        <a href="https://console.x.ai/" target="_blank" class="btn">前往 xAI Console</a>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">2</span>配置插件</div>
+        <p>在插件中选择 <strong>xAI</strong>。</p>
+        <ul>
+          <li><strong>API端点:</strong> <code>https://api.x.ai/v1/chat/completions</code></li>
+          <li><strong>模型:</strong> 选择 Grok 系列模型。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Mistral -->
+    <div class="card">
+      <h2>🆓 Mistral AI <span style="font-size:12px; color:#666; font-weight:normal">Free mode</span></h2>
+      <div class="step">
+        <div class="step-title"><span class="step-number">1</span>进入控制台</div>
+        <p>访问 Mistral Console 的 API Keys 页面。</p>
+        <a href="https://console.mistral.ai/api-keys/" target="_blank" class="btn">前往 Mistral API Keys</a>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">2</span>配置插件</div>
+        <p>在插件中选择 <strong>Mistral AI</strong>。</p>
+        <ul>
+          <li><strong>API端点:</strong> <code>https://api.mistral.ai/v1/chat/completions</code></li>
+          <li><strong>模型:</strong> 可直接填写 Mistral 控制台显示的模型 Code；免费模式以控制台当前显示为准。</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- MegaLLM -->
+    <div class="card">
+      <h2>⚡ MegaLLM</h2>
+      <div class="step">
+        <div class="step-title"><span class="step-number">1</span>注册账号</div>
+        <p>访问 MegaLLM 官网。</p>
+        <a href="https://megallm.io/" target="_blank" class="btn">前往 MegaLLM</a>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">2</span>获取 Key</div>
+        <p>登录后进入 Dashboard，找到 API Key 管理页面创建新的 Key。</p>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">3</span>配置插件</div>
+        <p>复制 Key，在插件中选择 <strong>MegaLLM (推荐)</strong> 并粘贴即可。</p>
+        <ul>
+          <li><strong>API端点:</strong> <code>https://ai.megallm.io/v1/chat/completions</code></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Google Gemini -->
+    <div class="card">
+      <h2>🆓 Google Gemini <span style="font-size:12px; color:#666; font-weight:normal; background:#e0f2fe; padding:2px 6px; border-radius:4px; color:#0369a1;">免费额度，截图首选</span></h2>
+      <div class="step">
+        <div class="step-title"><span class="step-number">1</span>访问 AI Studio</div>
+        <p>你需要一个 Google 账号。</p>
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" class="btn">前往 Google AI Studio</a>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">2</span>创建 Key</div>
+        <p>点击 "Create API key"，选择一个 Google Cloud 项目（如果没有会自动创建）。</p>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">3</span>配置插件</div>
+        <p>在插件中选择 <strong>Google Gemini (免费额度 / 截图优先)</strong> 并粘贴 API Key。</p>
+        <ul>
+          <li><strong>API端点:</strong> <code>https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent</code></li>
+          <li><strong>模型:</strong> 可直接填写 Google AI Studio / Gemini 文档显示的模型 Code。</li>
+        </ul>
+        <div class="note">
+          <strong>推荐理由：</strong> Gemini API 提供 Free Tier，Gemini 系列多模态（识图）能力强，适合截图识题。<br>
+          注意：Google API 在某些地区可能需要网络工具才能访问。
+        </div>
+      </div>
+    </div>
+
+    <!-- OpenAI -->
+    <div class="card">
+      <h2>🤖 OpenAI (ChatGPT)</h2>
+      <div class="step">
+        <div class="step-title"><span class="step-number">1</span>访问 OpenAI Platform</div>
+        <a href="https://platform.openai.com/api-keys" target="_blank" class="btn">前往 OpenAI Platform</a>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">2</span>创建 Key</div>
+        <p>点击 "Create new secret key"，复制生成的 Key。</p>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">3</span>配置插件</div>
+        <p>在插件中选择 <strong>OpenAI</strong> 并粘贴 Key。</p>
+        <ul>
+          <li><strong>API端点:</strong> <code>https://api.openai.com/v1/chat/completions</code></li>
+          <li><strong>模型:</strong> 可直接填写 OpenAI 平台显示的模型 Code；截图能力以模型说明为准。</li>
+        </ul>
+        <div class="note">
+          注意：OpenAI 需要绑定海外信用卡才能使用 API，且对 IP 要求严格。建议使用国内中转服务（OneAPI）。
+        </div>
+      </div>
+    </div>
+
+    <!-- Anthropic Claude -->
+    <div class="card">
+      <h2>🧠 Anthropic Claude</h2>
+      <div class="step">
+        <div class="step-title"><span class="step-number">1</span>访问 Console</div>
+        <a href="https://console.anthropic.com/" target="_blank" class="btn">前往 Anthropic Console</a>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">2</span>获取 Key</div>
+        <p>注册并验证手机号后，点击 "Get API Keys" 创建。</p>
+      </div>
+      <div class="step">
+        <div class="step-title"><span class="step-number">3</span>配置插件</div>
+        <p>在插件中选择 <strong>Anthropic (Claude)</strong>。</p>
+        <ul>
+          <li><strong>API端点:</strong> <code>https://api.anthropic.com/v1/messages</code></li>
+          <li><strong>模型:</strong> 可直接填写 Anthropic Console 显示的模型 Code；截图能力以模型说明为准。</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

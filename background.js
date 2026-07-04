@@ -67,18 +67,55 @@ async function takeScreenshot() {
       });
     });
     
-    return { success: true, imageData: imageData };
+    const compressedImageData = await compressImageData(imageData);
+    return { success: true, imageData: compressedImageData };
   } catch (error) {
     console.error('截图功能错误:', error);
     return { success: false, error: error.message };
   }
 }
 
-// API配置定义
-const API_CONFIGS = {
-  novita: {
-    name: 'Novita AI',
-    endpoint: 'https://api.novita.ai/v3/openai/chat/completions',
+async function compressImageData(imageData, maxSide = 1400, quality = 0.72) {
+  try {
+    if (typeof OffscreenCanvas === 'undefined' || typeof createImageBitmap === 'undefined') {
+      return imageData;
+    }
+
+    const response = await fetch(imageData);
+    const blob = await response.blob();
+    const bitmap = await createImageBitmap(blob);
+    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+
+    const canvas = new OffscreenCanvas(width, height);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    const outputBlob = await canvas.convertToBlob({ type: 'image/jpeg', quality });
+    const base64 = await blobToBase64(outputBlob);
+    return `data:image/jpeg;base64,${base64}`;
+  } catch (error) {
+    console.warn('截图压缩失败，使用原图:', error);
+    return imageData;
+  }
+}
+
+function blobToBase64(blob) {
+  return blob.arrayBuffer().then((buffer) => {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+    }
+    return btoa(binary);
+  });
+}
+
+function createOpenAICompatibleConfig(name, endpoint) {
+  return {
+    name,
+    endpoint,
     headers: (apiKey) => ({
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`
@@ -86,30 +123,73 @@ const API_CONFIGS = {
     buildBody: (model, messages, maxTokens, temperature) => ({
       model: model,
       messages: messages,
-      response_format: { type: 'text' },
       max_tokens: maxTokens,
-      temperature: temperature,
-      top_p: 1,
-      min_p: 0,
-      top_k: 50,
-      presence_penalty: 0,
-      frequency_penalty: 0,
-      repetition_penalty: 1
+      temperature: temperature
     }),
     buildImageBody: (model, messages, maxTokens, temperature) => ({
       model: model,
       messages: messages,
-      response_format: { type: 'text' },
       max_tokens: maxTokens,
-      temperature: temperature,
-      top_p: 1,
-      min_p: 0,
-      top_k: 50,
-      presence_penalty: 0,
-      frequency_penalty: 0,
-      repetition_penalty: 1
+      temperature: temperature
+    }),
+    extractResponse: (data) => data.choices?.[0]?.message?.content || ''
+  };
+}
+
+// API配置定义
+const API_CONFIGS = {
+  novita: {
+    name: 'MegaLLM',
+    endpoint: 'https://ai.megallm.io/v1/chat/completions',
+    headers: (apiKey) => ({
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    }),
+    buildBody: (model, messages, maxTokens, temperature) => ({
+      model: model,
+      messages: messages,
+      max_tokens: maxTokens,
+      temperature: temperature
+    }),
+    buildImageBody: (model, messages, maxTokens, temperature) => ({
+      model: model,
+      messages: messages,
+      max_tokens: maxTokens,
+      temperature: temperature
     }),
     extractResponse: (data) => data.choices[0].message.content
+  },
+  deepseek: {
+    name: 'DeepSeek',
+    endpoint: 'https://api.deepseek.com/chat/completions',
+    headers: (apiKey) => ({
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    }),
+    buildBody: (model, messages, maxTokens, temperature) => ({
+      model: model,
+      messages: messages,
+      max_tokens: maxTokens,
+      temperature: temperature
+    }),
+    buildImageBody: (model, messages, maxTokens, temperature) => ({
+      model: model,
+      messages: messages,
+      max_tokens: maxTokens,
+      temperature: temperature
+    }),
+    extractResponse: (data) => {
+       if (data.choices && data.choices[0] && data.choices[0].message) {
+           // 处理思维链 (reasoning_content)
+           const msg = data.choices[0].message;
+           let content = msg.content || '';
+           if (msg.reasoning_content) {
+               content = `> **深度思考**\n> ${msg.reasoning_content.replace(/\n/g, '\n> ')}\n\n${content}`;
+           }
+           return content;
+       }
+       return '';
+    }
   },
   openai: {
     name: 'OpenAI',
@@ -140,12 +220,16 @@ const API_CONFIGS = {
       'x-api-key': apiKey,
       'anthropic-version': '2023-06-01'
     }),
-    buildBody: (model, messages, maxTokens, temperature) => ({
-      model: model,
-      messages: messages,
-      max_tokens: maxTokens,
-      temperature: temperature
-    }),
+    buildBody: (model, messages, maxTokens, temperature) => {
+      const systemMessage = messages.find(msg => msg.role === 'system');
+      return {
+        model: model,
+        system: systemMessage ? systemMessage.content : undefined,
+        messages: messages.filter(msg => msg.role !== 'system'),
+        max_tokens: maxTokens,
+        temperature: temperature
+      };
+    },
     buildImageBody: (model, messages, maxTokens, temperature) => ({
       model: model,
       messages: messages,
@@ -184,7 +268,7 @@ const API_CONFIGS = {
           if (part.type === 'image') {
             return {
               inlineData: {
-                mimeType: 'image/jpeg',
+                mimeType: part.mimeType || 'image/jpeg',
                 data: part.imageData
               }
             };
@@ -199,16 +283,24 @@ const API_CONFIGS = {
       }
     }),
     extractResponse: (data) => {
-      if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
-        return data.candidates[0].content.parts[0].text;
-      } else if (data.candidates && data.candidates[0] && data.candidates[0].finishReason === 'MAX_TOKENS') {
-        throw new Error('模型达到最大token限制，请减少maxOutputTokens设置');
-      } else if (data.candidates && data.candidates[0] && data.candidates[0].finishReason === 'SAFETY') {
-        throw new Error('内容被安全过滤器阻止');
-      } else {
-        console.error('Gemini API响应格式异常:', data);
-        throw new Error('Gemini API响应格式异常');
+      if (!data) throw new Error('Gemini API返回为空');
+      if (data.candidates && data.candidates[0]) {
+          if (data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
+             return data.candidates[0].content.parts[0].text;
+          }
+          if (data.candidates[0].finishReason) {
+             if (data.candidates[0].finishReason === 'SAFETY') throw new Error('内容被Google安全过滤器拦截(SAFETY)');
+             if (data.candidates[0].finishReason === 'RECITATION') throw new Error('内容因版权原因被拦截(RECITATION)');
+             if (data.candidates[0].finishReason === 'MAX_TOKENS') throw new Error('回答长度超过限制，请增加Max Tokens');
+             throw new Error(`生成结束，原因: ${data.candidates[0].finishReason}`);
+          }
       }
+      // 错误处理增强
+      if (data.error) {
+          throw new Error(`Gemini API错误: ${data.error.message || JSON.stringify(data.error)}`);
+      }
+      console.error('Gemini API响应格式异常:', data);
+      throw new Error('Gemini API响应格式异常 (无candidates)');
     },
     buildUrl: (model, apiKey) => {
       // 确保模型名称格式正确
@@ -216,6 +308,46 @@ const API_CONFIGS = {
       return `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${apiKey}`;
     }
   },
+  openrouter: createOpenAICompatibleConfig(
+    'OpenRouter',
+    'https://openrouter.ai/api/v1/chat/completions'
+  ),
+  siliconflow: createOpenAICompatibleConfig(
+    'SiliconFlow 硅基流动',
+    'https://api.siliconflow.cn/v1/chat/completions'
+  ),
+  qwen: createOpenAICompatibleConfig(
+    '阿里云百炼 / 通义千问',
+    'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
+  ),
+  moonshot: createOpenAICompatibleConfig(
+    'Moonshot / Kimi',
+    'https://api.moonshot.cn/v1/chat/completions'
+  ),
+  zhipu: createOpenAICompatibleConfig(
+    '智谱 GLM',
+    'https://open.bigmodel.cn/api/paas/v4/chat/completions'
+  ),
+  volcengine: createOpenAICompatibleConfig(
+    '火山方舟 / 豆包',
+    'https://ark.cn-beijing.volces.com/api/v3/chat/completions'
+  ),
+  minimax: createOpenAICompatibleConfig(
+    'MiniMax',
+    'https://api.minimaxi.com/v1/chat/completions'
+  ),
+  groq: createOpenAICompatibleConfig(
+    'Groq',
+    'https://api.groq.com/openai/v1/chat/completions'
+  ),
+  xai: createOpenAICompatibleConfig(
+    'xAI',
+    'https://api.x.ai/v1/chat/completions'
+  ),
+  mistral: createOpenAICompatibleConfig(
+    'Mistral AI',
+    'https://api.mistral.ai/v1/chat/completions'
+  ),
   custom: {
     name: '自定义API',
     endpoint: '',
@@ -321,7 +453,7 @@ async function testAPIConnection(request) {
       } else if (response.status === 403) {
         errorMessage = `权限不足 (403): 请检查${config.name} API Key权限或账户状态`;
       } else if (response.status === 429) {
-        errorMessage = '请求过于频繁 (429): 请稍后再试';
+        errorMessage = '请求过于频繁 (429): 请稍后重试，或检查账户余额/配额';
       } else if (response.status === 400) {
         errorMessage = `请求参数错误 (400): 请检查模型名称和参数设置\n\n错误详情: ${errorText}`;
       }
@@ -341,7 +473,7 @@ async function testAPIConnection(request) {
 // 获取答案
 async function getAnswer(question, request) {
   try {
-    const { apiProvider, apiKey, apiEndpoint, model, maxTokens, temperature } = request;
+    const { apiProvider, apiKey, apiEndpoint, model, maxTokens, temperature, fastMode = true } = request;
     
     // 验证API Key格式
     if (!apiKey || apiKey.trim() === '') {
@@ -365,9 +497,11 @@ async function getAnswer(question, request) {
     
     // 构建消息
     let messages;
+    const systemContent = fastMode
+      ? '你是一个答题助手。请优先直接给出最终答案，然后用3-5行简短说明关键步骤。不要展开长篇推理。'
+      : '你是一个专业的答题助手。请根据用户提供的题目，给出准确、详细的答案。如果是选择题，请说明选择的原因；如果是计算题，请给出详细的解题步骤；如果是问答题，请给出完整的答案。每次回答先把题目和答案先显示出来。';
     if (apiProvider === 'google') {
       // Gemini API不支持system消息，将system内容合并到user消息中
-      const systemContent = '你是一个专业的答题助手。请根据用户提供的题目，给出准确、详细的答案。如果是选择题，请说明选择的原因；如果是计算题，请给出详细的解题步骤；如果是问答题，请给出完整的答案。每次回答先把题目和答案先显示出来。';
       messages = [
         {
           role: 'user',
@@ -379,7 +513,7 @@ async function getAnswer(question, request) {
       messages = [
         {
           role: 'system',
-          content: '你是一个专业的答题助手。请根据用户提供的题目，给出准确、详细的答案。如果是选择题，请说明选择的原因；如果是计算题，请给出详细的解题步骤；如果是问答题，请给出完整的答案。每次回答先把题目和答案先显示出来。'
+          content: systemContent
         },
         {
           role: 'user',
@@ -389,7 +523,8 @@ async function getAnswer(question, request) {
     }
     
     // 构建请求体
-    const body = config.buildBody(model, messages, maxTokens, temperature);
+    const effectiveMaxTokens = fastMode ? Math.min(maxTokens || 1500, 1500) : maxTokens;
+    const body = config.buildBody(model, messages, effectiveMaxTokens, temperature);
     
     const response = await fetch(url, {
       method: 'POST',
@@ -410,7 +545,7 @@ async function getAnswer(question, request) {
       } else if (response.status === 403) {
         errorMessage = `权限不足 (403): 请检查${config.name} API Key权限或账户状态`;
       } else if (response.status === 429) {
-        errorMessage = '请求过于频繁 (429): 请稍后再试';
+        errorMessage = '请求过于频繁 (429): 请稍后重试，或检查账户余额/配额';
       } else if (response.status === 400) {
         errorMessage = `请求参数错误 (400): 请检查模型名称和参数设置`;
       }
@@ -434,7 +569,7 @@ async function getAnswer(question, request) {
 // 从图片获取答案
 async function getAnswerFromImage(imageData, request) {
   try {
-    const { apiProvider, apiKey, apiEndpoint, model, maxTokens, temperature } = request;
+    const { apiProvider, apiKey, apiEndpoint, model, maxTokens, temperature, fastMode = true } = request;
     
     // 验证API Key格式
     if (!apiKey || apiKey.trim() === '') {
@@ -450,11 +585,6 @@ async function getAnswerFromImage(imageData, request) {
       throw new Error(`不支持的API提供商: ${apiProvider}`);
     }
     
-    // 检查API是否支持图片输入
-    if (!isImageSupported(apiProvider, model)) {
-      throw new Error('当前选择的API模型不支持图片输入，请选择支持图片的模型');
-    }
-    
     // 构建请求URL
     let url = apiEndpoint || config.endpoint;
     if (apiProvider === 'google') {
@@ -465,10 +595,11 @@ async function getAnswerFromImage(imageData, request) {
     const processedImageData = processImageData(imageData, apiProvider);
     
     // 构建消息
-    const messages = buildImageMessages(apiProvider, processedImageData);
+    const messages = buildImageMessages(apiProvider, processedImageData, fastMode);
     
     // 构建请求体
-    const body = config.buildImageBody(model, messages, maxTokens, temperature);
+    const effectiveMaxTokens = fastMode ? Math.min(maxTokens || 2500, 2500) : maxTokens;
+    const body = config.buildImageBody(model, messages, effectiveMaxTokens, temperature);
     
     const response = await fetch(url, {
       method: 'POST',
@@ -513,7 +644,11 @@ async function getAnswerFromImage(imageData, request) {
 // 检查API是否支持图片输入
 function isImageSupported(apiProvider, model) {
   // 动态检查模型是否支持图片
-  const imageKeywords = ['vision', 'gpt-4o', 'gpt-4o-mini', 'claude-3', 'gemini-1.5', 'gemini-2.0', 'gemini-2.5', 'minimax'];
+  const imageKeywords = [
+    'vision', 'gpt-4o', 'claude-3', 'gemini', 'qwen-vl', '-vl',
+    'glm-4v', 'pixtral', 'llama-4', 'minimax-vl', 'minimax-m3',
+    'openrouter/free'
+  ];
   
   // 检查模型名称是否包含图片支持的关键词
   const modelLower = model.toLowerCase();
@@ -522,7 +657,7 @@ function isImageSupported(apiProvider, model) {
 
 // 处理图片数据
 function processImageData(imageData, apiProvider) {
-  // 移除data:image/png;base64,前缀
+  // 移除data:image/...;base64,前缀
   const base64Data = imageData.replace(/^data:image\/[a-z]+;base64,/, '');
   
   if (apiProvider === 'google') {
@@ -532,11 +667,22 @@ function processImageData(imageData, apiProvider) {
   return imageData;
 }
 
+function getImageMimeType(imageData) {
+  const match = imageData.match(/^data:(image\/[a-z]+);base64,/);
+  return match ? match[1] : 'image/jpeg';
+}
+
 // 构建图片消息
-function buildImageMessages(apiProvider, imageData) {
-  const systemMessage = '你是一个专业的答题助手。请仔细分析图片中的题目，并给出详细的解答。如果是选择题，请说明选择的原因；如果是计算题，请给出详细的解题步骤；如果是问答题，请给出完整的答案。每次回答先把题目和答案先显示出来。';
+function buildImageMessages(apiProvider, imageData, fastMode = true) {
+  const mimeType = getImageMimeType(imageData);
+  const systemMessage = fastMode
+    ? '你是一个答题助手。请先识别图片中的主要题目，直接给出最终答案，再用3-5行简短说明关键步骤。忽略页面导航、广告、按钮等无关内容。不要展开长篇推理。'
+    : '你是一个专业的答题助手。请仔细分析图片中的题目，并给出详细的解答。如果是选择题，请说明选择的原因；如果是计算题，请给出详细的解题步骤；如果是问答题，请给出完整的答案。每次回答先把题目和答案先显示出来。';
+  const userImagePrompt = fastMode
+    ? '请识别图片中的主要题目，直接给答案，并用3-5行简短解析。'
+    : '请分析这张图片中的题目并给出详细解答。每次回答先把题目和答案先显示出来。';
   
-  if (apiProvider === 'openai') {
+  if (apiProvider === 'openai' || apiProvider === 'novita' || apiProvider === 'deepseek' || apiProvider === 'custom') {
     return [
       {
         role: 'system',
@@ -547,12 +693,12 @@ function buildImageMessages(apiProvider, imageData) {
         content: [
           {
             type: 'text',
-            text: '请分析这张图片中的题目并给出详细解答。每次回答先把题目和答案先显示出来。'
+            text: userImagePrompt
           },
           {
             type: 'image_url',
             image_url: {
-              url: imageData
+              url: imageData // 注意：这里需要确保 imageData 包含 data:image/... 前缀
             }
           }
         ]
@@ -565,13 +711,13 @@ function buildImageMessages(apiProvider, imageData) {
         content: [
           {
             type: 'text',
-            text: systemMessage + '\n\n请分析这张图片中的题目并给出详细解答。每次回答先把题目和答案先显示出来。'
+            text: `${systemMessage}\n\n${userImagePrompt}`
           },
           {
             type: 'image',
             source: {
               type: 'base64',
-              media_type: 'image/png',
+              media_type: mimeType,
               data: imageData.replace(/^data:image\/[a-z]+;base64,/, '')
             }
           }
@@ -585,11 +731,12 @@ function buildImageMessages(apiProvider, imageData) {
         content: [
           {
             type: 'text',
-            text: systemMessage + '\n\n请分析这张图片中的题目并给出详细解答。每次回答先把题目和答案先显示出来。'
+            text: `${systemMessage}\n\n${userImagePrompt}`
           },
           {
             type: 'image',
-            imageData: imageData.replace(/^data:image\/[a-z]+;base64,/, '')
+            imageData: imageData.replace(/^data:image\/[a-z]+;base64,/, ''),
+            mimeType
           }
         ]
       }
@@ -606,7 +753,7 @@ function buildImageMessages(apiProvider, imageData) {
         content: [
           {
             type: 'text',
-            text: '请分析这张图片中的题目并给出详细解答。每次回答先把题目和答案先显示出来。'
+            text: userImagePrompt
           },
           {
             type: 'image_url',

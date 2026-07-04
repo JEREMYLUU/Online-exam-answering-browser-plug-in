@@ -33,16 +33,41 @@ class QuestionHelper {
     return new Promise((resolve) => {
       chrome.storage.sync.get([
         'apiProvider', 'apiKey', 'apiEndpoint', 'model', 'maxTokens', 
-        'temperature', 'showFloatingIcon'
+        'temperature', 'showFloatingIcon', 'fastMode',
+        'textApiProvider', 'textApiKey', 'textApiEndpoint', 'textModel', 'textMaxTokens', 'textTemperature',
+        'imageApiProvider', 'imageApiKey', 'imageApiEndpoint', 'imageModel', 'imageMaxTokens', 'imageTemperature'
       ], (result) => {
+        const textApiProvider = result.textApiProvider || result.apiProvider || 'deepseek';
+        const textApiKey = result.textApiKey || result.apiKey || '';
+        const textApiEndpoint = result.textApiEndpoint || result.apiEndpoint || 'https://api.deepseek.com/chat/completions';
+        const textModel = result.textModel || result.model || 'deepseek-chat';
+        const textMaxTokens = result.textMaxTokens || result.maxTokens || 1500;
+        const textTemperature = result.textTemperature || result.temperature || 1.0;
+        const imageApiProvider = result.imageApiProvider || 'google';
+        const imageApiEndpoint = result.imageApiEndpoint || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+
         this.settings = { 
           ...this.settings, 
           ...result,
-          apiProvider: result.apiProvider || 'novita',
-          apiEndpoint: result.apiEndpoint || 'https://api.novita.ai/v3/openai/chat/completions',
-          model: result.model || 'minimaxai/minimax-m1-80k',
-          maxTokens: result.maxTokens || 20000,
-          temperature: result.temperature || 0.7
+          textApiProvider,
+          textApiKey,
+          textApiEndpoint,
+          textModel,
+          textMaxTokens,
+          textTemperature,
+          imageApiProvider,
+          imageApiKey: result.imageApiKey || '',
+          imageApiEndpoint,
+          imageModel: result.imageModel || 'gemini-2.5-flash',
+          imageMaxTokens: result.imageMaxTokens || 2500,
+          imageTemperature: result.imageTemperature || 0.7,
+          fastMode: result.fastMode !== undefined ? result.fastMode : true,
+          apiProvider: textApiProvider,
+          apiKey: textApiKey,
+          apiEndpoint: textApiEndpoint,
+          model: textModel,
+          maxTokens: textMaxTokens,
+          temperature: textTemperature
         };
         resolve();
       });
@@ -65,17 +90,92 @@ class QuestionHelper {
   
   // 创建截图按钮
   createScreenshotButton() {
-    this.screenshotButton = document.createElement('button');
+    this.screenshotButton = document.createElement('div');
     this.screenshotButton.className = 'screenshot-button';
-    this.screenshotButton.title = '截图识题';
-    this.screenshotButton.type = 'button';
+    this.screenshotButton.title = '截图识题 (按住拖动)';
     this.screenshotButton.innerHTML = '📷 截图识题';
+    
+    // 恢复上次的位置
+    const savedPos = localStorage.getItem('screenshotBtnPos');
+    if (savedPos) {
+      const { top, right } = JSON.parse(savedPos);
+      if (top) this.screenshotButton.style.top = top;
+      if (right) this.screenshotButton.style.right = right;
+      // 如果有左/底定位也兼容，但css默认是top/right，这里简化处理
+    }
+
     document.body.appendChild(this.screenshotButton);
     
-    // 点击事件
-    this.screenshotButton.addEventListener('click', () => {
-      this.handleScreenshotClick();
+    // 绑定点击和拖拽
+    this.bindDraggableButton(this.screenshotButton);
+  }
+
+  // 绑定拖拽和点击逻辑
+  bindDraggableButton(element) {
+    let isDragging = false;
+    let startX, startY;
+    let initialRight, initialTop;
+    
+    // 鼠标按下
+    element.addEventListener('mousedown', (e) => {
+      isDragging = false;
+      startX = e.clientX;
+      startY = e.clientY;
+      
+      const rect = element.getBoundingClientRect();
+      // 转换为 right/top 坐标系
+      initialRight = document.documentElement.clientWidth - rect.right;
+      initialTop = rect.top;
+      
+      // 阻止默认选择
+      e.preventDefault();
+      
+      // 绑定全局移动和释放
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
     });
+
+    const onMouseMove = (e) => {
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      
+      // 稍微移动一点就算拖拽
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        isDragging = true;
+        element.style.cursor = 'grabbing';
+        
+        // 计算新位置
+        let newRight = initialRight - dx;
+        let newTop = initialTop + dy;
+        
+        // 边界限制
+        const maxRight = document.documentElement.clientWidth - element.offsetWidth;
+        const maxTop = document.documentElement.clientHeight - element.offsetHeight;
+        
+        newRight = Math.max(0, Math.min(newRight, maxRight));
+        newTop = Math.max(0, Math.min(newTop, maxTop));
+        
+        element.style.right = `${newRight}px`;
+        element.style.top = `${newTop}px`;
+      }
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      element.style.cursor = 'pointer';
+      
+      if (isDragging) {
+        // 保存位置
+        localStorage.setItem('screenshotBtnPos', JSON.stringify({
+          top: element.style.top,
+          right: element.style.right
+        }));
+      } else {
+        // 没拖拽，视为点击
+        this.handleScreenshotClick();
+      }
+    };
   }
   
   // 创建答案显示框
@@ -172,14 +272,12 @@ class QuestionHelper {
   // 处理截图按钮点击
   async handleScreenshotClick() {
     if (this.isLoading) return;
-    if (!this.settings.apiKey) {
-      this.showError('请先在插件设置中配置API Key');
+    if (!this.settings.imageApiKey) {
+      this.showAnswerDisplay();
+      this.showError('请先在插件设置中配置“截图识题 API Key”。截图识题必须使用支持图片的模型，例如 Gemini、Qwen-VL、GLM-4V、Pixtral、GPT-4o。');
       return;
     }
-    if (!this.isImageSupported()) {
-      this.showError('当前选择的API模型不支持图片输入，请选择支持图片的模型（如GPT-4 Vision、Claude 3 Haiku、Gemini Pro Vision等）');
-      return;
-    }
+    
     try {
       this.showAnswerDisplay();
       this.showLoading('正在截取网页...');
@@ -206,12 +304,9 @@ class QuestionHelper {
   
   // 检查API是否支持图片输入
   isImageSupported() {
-    // 动态检查模型是否支持图片
-    const imageKeywords = ['vision', 'gpt-4o', 'gpt-4o-mini', 'claude-3', 'gemini-1.5', 'gemini-2.0', 'gemini-2.5', 'minimax'];
-    
-    // 检查模型名称是否包含图片支持的关键词
-    const modelLower = this.settings.model.toLowerCase();
-    return imageKeywords.some(keyword => modelLower.includes(keyword.toLowerCase()));
+    // 用户要求默认放行所有模型
+    // 即使模型不支持，API 也会返回错误，让 API 来拒绝比前端写死判断更灵活
+    return true;
   }
   
   // 处理按钮点击
@@ -223,8 +318,8 @@ class QuestionHelper {
       return;
     }
     
-    if (!this.settings.apiKey) {
-      this.showError('请先在插件设置中配置API Key');
+    if (!this.settings.textApiKey) {
+      this.showError('请先在插件设置中配置“文字搜题 API Key”。文字搜题可以使用 DeepSeek、Qwen、Groq、Kimi 等文本模型。');
       return;
     }
     
@@ -240,12 +335,13 @@ class QuestionHelper {
         chrome.runtime.sendMessage({
           action: 'getAnswerFromImage',
           imageData: imageData,
-          apiProvider: this.settings.apiProvider,
-          apiKey: this.settings.apiKey,
-          apiEndpoint: this.settings.apiEndpoint,
-          model: this.settings.model,
-          maxTokens: this.settings.maxTokens,
-          temperature: this.settings.temperature
+          apiProvider: this.settings.imageApiProvider,
+          apiKey: this.settings.imageApiKey,
+          apiEndpoint: this.settings.imageApiEndpoint,
+          model: this.settings.imageModel,
+          maxTokens: this.settings.imageMaxTokens,
+          temperature: this.settings.imageTemperature,
+          fastMode: this.settings.fastMode
         }, (response) => {
           if (chrome.runtime.lastError) {
             reject(new Error(chrome.runtime.lastError.message));
@@ -284,12 +380,13 @@ class QuestionHelper {
         chrome.runtime.sendMessage({
           action: 'getAnswer',
           question: question,
-          apiProvider: this.settings.apiProvider,
-          apiKey: this.settings.apiKey,
-          apiEndpoint: this.settings.apiEndpoint,
-          model: this.settings.model,
-          maxTokens: this.settings.maxTokens,
-          temperature: this.settings.temperature
+          apiProvider: this.settings.textApiProvider,
+          apiKey: this.settings.textApiKey,
+          apiEndpoint: this.settings.textApiEndpoint,
+          model: this.settings.textModel,
+          maxTokens: this.settings.textMaxTokens,
+          temperature: this.settings.textTemperature,
+          fastMode: this.settings.fastMode
         }, (response) => {
           if (chrome.runtime.lastError) {
             const error = chrome.runtime.lastError;

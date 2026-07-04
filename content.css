@@ -38,42 +38,53 @@
 /* 右上角截图按钮样式 */
 .screenshot-button {
   position: fixed;
-  top: 20px;
-  right: 20px;
-  width: 120px;
-  height: 40px;
-  background: linear-gradient(135deg, #FF6B6B 0%, #FF5252 100%);
-  border-radius: 20px;
+  top: 30px;
+  right: 30px;
+  padding: 12px 24px;
+  width: auto;
+  height: auto;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50px; /* 胶囊形状 */
   cursor: pointer;
-  z-index: 10000;
+  z-index: 2147483647;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  font-size: 14px;
+  gap: 8px;
+  color: #374151; /* Gray 700 */
+  font-size: 15px;
   font-weight: 600;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  transition: all 0.3s ease;
-  border: none;
+  letter-spacing: 0.5px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.05), 
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(0,0,0,0.05);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   outline: none;
   opacity: 0;
-  transform: translateY(-10px);
+  transform: translateY(-10px) scale(0.95);
 }
 
 .screenshot-button.visible {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateY(0) scale(1);
 }
 
 .screenshot-button:hover {
-  background: linear-gradient(135deg, #FF5252 0%, #FF1744 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+  background: #ffffff;
+  color: #4F46E5; /* Indigo 600 */
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 
+    0 20px 25px -5px rgba(0, 0, 0, 0.1), 
+    0 10px 10px -5px rgba(0, 0, 0, 0.04),
+    0 0 0 2px rgba(79, 70, 229, 0.1);
 }
 
 .screenshot-button:active {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.98);
 }
 
 /* 答案显示框样式 */

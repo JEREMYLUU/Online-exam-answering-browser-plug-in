@@ -8,12 +8,25 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // 绑定事件监听器
   document.getElementById('saveSettings').addEventListener('click', saveSettings);
-  document.getElementById('testAPI').addEventListener('click', testAPI);
+  document.getElementById('testTextAPI').addEventListener('click', testTextAPI);
+  document.getElementById('testImageAPI').addEventListener('click', testImageAPI);
   document.getElementById('apiProvider').addEventListener('change', updateAPIConfig);
   document.getElementById('apiKey').addEventListener('input', debounce(checkAPIAndLoadModels, 1000));
   document.getElementById('apiEndpoint').addEventListener('input', debounce(checkAPIAndLoadModels, 1000));
   document.getElementById('model').addEventListener('change', updateModelInfo);
+  document.getElementById('modelManual').addEventListener('input', updateModelInfo);
   document.getElementById('temperature').addEventListener('input', updateTempValue);
+  document.getElementById('imageApiProvider').addEventListener('change', updateImageAPIConfig);
+  document.getElementById('imageApiKey').addEventListener('input', debounce(checkImageAPIAndLoadModels, 1000));
+  document.getElementById('imageApiEndpoint').addEventListener('input', debounce(checkImageAPIAndLoadModels, 1000));
+  document.getElementById('imageModel').addEventListener('change', updateImageModelInfo);
+  document.getElementById('imageModelManual').addEventListener('input', updateImageModelInfo);
+  document.getElementById('imageTemperature').addEventListener('input', updateImageTempValue);
+  
+  // 教程按钮
+  document.getElementById('openTutorial').addEventListener('click', function() {
+    chrome.tabs.create({ url: 'tutorial.html' });
+  });
 });
 
 // 防抖函数
@@ -29,101 +42,251 @@ function debounce(func, wait) {
   };
 }
 
+function getSelectedOrManualModel(selectId, manualId) {
+  const manualValue = document.getElementById(manualId).value.trim();
+  return manualValue || document.getElementById(selectId).value;
+}
+
+function restoreModelSelection(selectId, manualId, modelId, updateFn) {
+  if (!modelId) return;
+  
+  const select = document.getElementById(selectId);
+  const existsInSelect = Array.from(select.options).some(option => option.value === modelId);
+  
+  if (existsInSelect) {
+    select.value = modelId;
+    document.getElementById(manualId).value = '';
+  } else {
+    document.getElementById(manualId).value = modelId;
+  }
+  
+  updateFn();
+}
+
 // API配置定义
 const API_CONFIGS = {
   novita: {
-    name: 'Novita AI',
-    endpoint: 'https://api.novita.ai/v3/openai/chat/completions',
-    helpText: '💡 获取API Key: <a href="https://novita.ai/" target="_blank" rel="noopener">访问Novita AI官网</a> → 注册/登录 → API管理 → 创建新的API Key',
-    defaultMaxTokens: 20000,
+    name: 'MegaLLM',
+    endpoint: 'https://ai.megallm.io/v1/chat/completions',
+    helpText: '💡 获取API Key: <a href="https://megallm.io/" target="_blank">MegaLLM官网</a>。如果想先免费试用，建议优先选择上方带“🆓”的平台。',
+    defaultMaxTokens: 1500,
     defaultTemperature: 0.7,
-    modelsEndpoint: null // 使用默认端点
+    modelsEndpoint: 'https://ai.megallm.io/v1/models' 
+  },
+  deepseek: {
+    name: 'DeepSeek',
+    endpoint: 'https://api.deepseek.com/chat/completions',
+    helpText: '💡 获取API Key: <a href="https://platform.deepseek.com/" target="_blank">DeepSeek 开放平台</a>。文本搜题成本低；截图识题建议选择支持图片的免费额度平台。',
+    defaultMaxTokens: 1500,
+    defaultTemperature: 1.0, // DeepSeek 推荐默认温度
+    modelsEndpoint: 'https://api.deepseek.com/models'
   },
   openai: {
     name: 'OpenAI',
     endpoint: 'https://api.openai.com/v1/chat/completions',
-    helpText: '💡 获取API Key: <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">访问OpenAI平台</a> → 登录 → API Keys → Create new secret key',
-    defaultMaxTokens: 4000,
+    helpText: '💡 获取API Key: <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a>',
+    defaultMaxTokens: 1500,
     defaultTemperature: 0.7,
     modelsEndpoint: 'https://api.openai.com/v1/models'
   },
   anthropic: {
     name: 'Anthropic Claude',
     endpoint: 'https://api.anthropic.com/v1/messages',
-    helpText: '💡 获取API Key: <a href="https://console.anthropic.com/" target="_blank" rel="noopener">访问Anthropic控制台</a> → 登录 → API Keys → Create Key',
-    defaultMaxTokens: 4000,
+    helpText: '💡 获取API Key: <a href="https://console.anthropic.com/" target="_blank">Anthropic Console</a>',
+    defaultMaxTokens: 1500,
     defaultTemperature: 0.7,
     modelsEndpoint: null // Anthropic不提供模型列表API
   },
   google: {
-    name: 'Google Gemini',
+    name: 'Google Gemini (免费额度优先)',
     endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
-    helpText: '💡 获取API Key: <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener">访问Google AI Studio</a> → 登录 → Get API key',
-    defaultMaxTokens: 100,
+    helpText: '🆓 推荐：Gemini API 提供 Free Tier，适合先免费测试截图识题。获取API Key: <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a>',
+    defaultMaxTokens: 2500,
     defaultTemperature: 0.7,
     modelsEndpoint: 'https://generativelanguage.googleapis.com/v1beta/models'
+  },
+  openrouter: {
+    name: 'OpenRouter (免费模型优先)',
+    endpoint: 'https://openrouter.ai/api/v1/chat/completions',
+    helpText: '🆓 推荐：OpenRouter 可选择免费模型或 openrouter/free 路由，适合一个 Key 试多家模型。获取API Key: <a href="https://openrouter.ai/settings/keys" target="_blank">OpenRouter Keys</a>',
+    defaultMaxTokens: 1500,
+    defaultTemperature: 0.7,
+    modelsEndpoint: 'https://openrouter.ai/api/v1/models'
+  },
+  siliconflow: {
+    name: 'SiliconFlow 硅基流动 (免费模型优先)',
+    endpoint: 'https://api.siliconflow.cn/v1/chat/completions',
+    helpText: '🆓 推荐：硅基流动提供免费模型，国内访问友好；免费模型可能有固定限流。获取API Key: <a href="https://cloud.siliconflow.cn/account/ak" target="_blank">SiliconFlow API Keys</a>',
+    defaultMaxTokens: 1500,
+    defaultTemperature: 0.7,
+    modelsEndpoint: 'https://api.siliconflow.cn/v1/models'
+  },
+  qwen: {
+    name: '阿里云百炼 / 通义千问 (新人免费额度)',
+    endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+    helpText: '🆓 推荐：阿里云百炼新用户通常有免费额度，适合国内用户先试 Qwen / Qwen-VL。获取API Key: <a href="https://bailian.console.aliyun.com/?apiKey=1" target="_blank">阿里云百炼 API Key</a>',
+    defaultMaxTokens: 1500,
+    defaultTemperature: 0.7,
+    modelsEndpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/models'
+  },
+  moonshot: {
+    name: 'Moonshot / Kimi',
+    endpoint: 'https://api.moonshot.cn/v1/chat/completions',
+    helpText: '💡 获取API Key: <a href="https://platform.moonshot.cn/console/api-keys" target="_blank">Moonshot 控制台</a>',
+    defaultMaxTokens: 1500,
+    defaultTemperature: 0.7,
+    modelsEndpoint: 'https://api.moonshot.cn/v1/models'
+  },
+  zhipu: {
+    name: '智谱 GLM',
+    endpoint: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+    helpText: '💡 获取API Key: <a href="https://bigmodel.cn/usercenter/proj-mgmt/apikeys" target="_blank">智谱开放平台 API Keys</a>',
+    defaultMaxTokens: 1500,
+    defaultTemperature: 0.7,
+    modelsEndpoint: 'https://open.bigmodel.cn/api/paas/v4/models'
+  },
+  volcengine: {
+    name: '火山方舟 / 豆包',
+    endpoint: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
+    helpText: '💡 获取API Key: <a href="https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey" target="_blank">火山方舟 API Key</a>',
+    defaultMaxTokens: 1500,
+    defaultTemperature: 0.7,
+    modelsEndpoint: 'https://ark.cn-beijing.volces.com/api/v3/models'
+  },
+  minimax: {
+    name: 'MiniMax',
+    endpoint: 'https://api.minimaxi.com/v1/chat/completions',
+    helpText: '💡 获取API Key: <a href="https://platform.minimaxi.com/user-center/basic-information/interface-key" target="_blank">MiniMax API Key</a>',
+    defaultMaxTokens: 1500,
+    defaultTemperature: 0.7,
+    modelsEndpoint: 'https://api.minimaxi.com/v1/models'
+  },
+  groq: {
+    name: 'Groq (免费试用 / 文本高速)',
+    endpoint: 'https://api.groq.com/openai/v1/chat/completions',
+    helpText: '🆓 推荐：Groq 适合免费试用和高速文本搜题；截图识题请选支持图片的模型。获取API Key: <a href="https://console.groq.com/keys" target="_blank">Groq API Keys</a>',
+    defaultMaxTokens: 1500,
+    defaultTemperature: 0.7,
+    modelsEndpoint: 'https://api.groq.com/openai/v1/models'
+  },
+  xai: {
+    name: 'xAI',
+    endpoint: 'https://api.x.ai/v1/chat/completions',
+    helpText: '💡 获取API Key: <a href="https://console.x.ai/" target="_blank">xAI Console</a>',
+    defaultMaxTokens: 1500,
+    defaultTemperature: 0.7,
+    modelsEndpoint: 'https://api.x.ai/v1/models'
+  },
+  mistral: {
+    name: 'Mistral AI (Free mode)',
+    endpoint: 'https://api.mistral.ai/v1/chat/completions',
+    helpText: '🆓 推荐：Mistral La Plateforme 有 Free mode，可先试文本和 Pixtral 视觉模型。获取API Key: <a href="https://console.mistral.ai/api-keys/" target="_blank">Mistral API Keys</a>',
+    defaultMaxTokens: 1500,
+    defaultTemperature: 0.7,
+    modelsEndpoint: 'https://api.mistral.ai/v1/models'
   },
   custom: {
     name: '自定义API',
     endpoint: '',
     helpText: '💡 请输入您的自定义API配置信息',
-    defaultMaxTokens: 2000,
+    defaultMaxTokens: 1500,
     defaultTemperature: 0.7,
     modelsEndpoint: null
   }
 };
 
-// 预设的模型信息（用于无法动态获取的情况）
+// 预设的模型信息
 const PRESET_MODELS = {
   openai: [
-    { id: 'gpt-4-vision-preview', name: 'GPT-4 Vision', supportsImage: true },
     { id: 'gpt-4o', name: 'GPT-4o', supportsImage: true },
     { id: 'gpt-4o-mini', name: 'GPT-4o Mini', supportsImage: true },
-    { id: 'gpt-4', name: 'GPT-4', supportsImage: false },
     { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', supportsImage: false },
     { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', supportsImage: false }
   ],
+  deepseek: [
+    { id: 'deepseek-chat', name: 'DeepSeek V3 (Chat)', supportsImage: false },
+    { id: 'deepseek-reasoner', name: 'DeepSeek R1 (Reasoning)', supportsImage: false }
+  ],
   anthropic: [
+    { id: 'claude-3-5-sonnet-20240620', name: 'Claude 3.5 Sonnet', supportsImage: true },
     { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', supportsImage: true },
     { id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet', supportsImage: true },
     { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', supportsImage: true }
   ],
   google: [
-    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', supportsImage: true },
-    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', supportsImage: true },
-    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', supportsImage: true },
-    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', supportsImage: true },
-    { id: 'gemini-pro', name: 'Gemini Pro', supportsImage: false }
+    { id: 'gemini-2.5-flash', name: '🆓 Gemini 2.5 Flash (免费额度优先)', supportsImage: true },
+    { id: 'gemini-2.5-flash-lite', name: '🆓 Gemini 2.5 Flash Lite (低成本)', supportsImage: true },
+    { id: 'gemini-1.5-flash', name: '🆓 Gemini 1.5 Flash (兼容备用)', supportsImage: true }
   ],
   novita: [
-    { id: 'minimaxai/minimax-m1-80k', name: 'Minimax M1-80K', supportsImage: true },
-    { id: 'minimaxai/minimax-m1-32k', name: 'Minimax M1-32K', supportsImage: true },
-    { id: 'minimaxai/minimax-m1-8k', name: 'Minimax M1-8K', supportsImage: true }
+    { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1', supportsImage: false },
+    { id: 'deepseek/deepseek-v3', name: 'DeepSeek V3', supportsImage: false },
+    { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B', supportsImage: false }
+  ],
+  openrouter: [
+    { id: 'openrouter/free', name: '🆓 OpenRouter Free Router (自动免费模型)', supportsImage: true },
+    { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash', supportsImage: true },
+    { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', supportsImage: true }
+  ],
+  siliconflow: [
+    { id: 'Qwen/Qwen2.5-VL-72B-Instruct', name: '🆓 Qwen2.5-VL 72B (免费模型 / 截图优先)', supportsImage: true },
+    { id: 'deepseek-ai/DeepSeek-R1', name: '🆓 DeepSeek R1 (文本推理)', supportsImage: false },
+    { id: 'deepseek-ai/DeepSeek-V3', name: '🆓 DeepSeek V3 (文本)', supportsImage: false }
+  ],
+  qwen: [
+    { id: 'qwen-vl-plus', name: '🆓 Qwen VL Plus (新人免费额度 / 截图优先)', supportsImage: true },
+    { id: 'qwen-plus', name: '🆓 Qwen Plus (新人额度 / 文本)', supportsImage: false },
+    { id: 'qwen-turbo', name: '🆓 Qwen Turbo (新人额度 / 低成本)', supportsImage: false }
+  ],
+  moonshot: [
+    { id: 'moonshot-v1-8k', name: 'Moonshot v1 8K', supportsImage: false },
+    { id: 'moonshot-v1-32k', name: 'Moonshot v1 32K', supportsImage: false },
+    { id: 'moonshot-v1-128k', name: 'Moonshot v1 128K', supportsImage: false }
+  ],
+  zhipu: [
+    { id: 'glm-4-flash', name: 'GLM-4 Flash', supportsImage: false },
+    { id: 'glm-4', name: 'GLM-4', supportsImage: false },
+    { id: 'glm-4v', name: 'GLM-4V', supportsImage: true }
+  ],
+  volcengine: [
+    { id: 'doubao-seed-1-6-flash-250615', name: 'Doubao Seed 1.6 Flash', supportsImage: false },
+    { id: 'doubao-seed-1-6-thinking-250615', name: 'Doubao Seed 1.6 Thinking', supportsImage: false },
+    { id: 'doubao-1-5-vision-pro-250328', name: 'Doubao Vision Pro', supportsImage: true }
+  ],
+  minimax: [
+    { id: 'MiniMax-M3', name: 'MiniMax M3', supportsImage: true },
+    { id: 'MiniMax-M2.7', name: 'MiniMax M2.7', supportsImage: false },
+    { id: 'MiniMax-M2.5', name: 'MiniMax M2.5', supportsImage: false }
+  ],
+  groq: [
+    { id: 'llama-3.3-70b-versatile', name: '🆓 Llama 3.3 70B Versatile (免费试用 / 文本高速)', supportsImage: false },
+    { id: 'meta-llama/llama-4-scout-17b-16e-instruct', name: '🆓 Llama 4 Scout (支持图片)', supportsImage: true },
+    { id: 'qwen/qwen3-32b', name: '🆓 Qwen3 32B (文本)', supportsImage: false }
+  ],
+  xai: [
+    { id: 'grok-3', name: 'Grok 3', supportsImage: false },
+    { id: 'grok-3-mini', name: 'Grok 3 Mini', supportsImage: false },
+    { id: 'grok-2-vision-1212', name: 'Grok 2 Vision', supportsImage: true }
+  ],
+  mistral: [
+    { id: 'pixtral-large-latest', name: '🆓 Pixtral Large Latest (Free mode / 截图)', supportsImage: true },
+    { id: 'mistral-small-latest', name: '🆓 Mistral Small Latest (Free mode / 文本)', supportsImage: false },
+    { id: 'mistral-large-latest', name: 'Mistral Large Latest', supportsImage: false }
   ]
 };
 
 // 初始化API配置
 function initAPIConfig() {
   const providerSelect = document.getElementById('apiProvider');
-  const endpointInput = document.getElementById('apiEndpoint');
-  const maxTokensInput = document.getElementById('maxTokens');
-  const temperatureInput = document.getElementById('temperature');
-  const tempValueSpan = document.getElementById('tempValue');
   
-  // 初始化温度滑块显示
-  updateTempValue();
-  
-  // 为每个API提供商添加选项
-  Object.keys(API_CONFIGS).forEach(provider => {
-    const option = document.createElement('option');
-    option.value = provider;
-    option.textContent = API_CONFIGS[provider].name;
-    providerSelect.appendChild(option);
-  });
-  
-  // 设置默认选择
-  providerSelect.value = 'novita';
+  // 检查是否已有选项，避免重复添加
+  if (providerSelect.options.length > 0) {
+    // 仅更新显示逻辑
+  }
+
+  // 设置默认值
   updateAPIConfig();
+  updateImageAPIConfig();
 }
 
 // 更新API配置
@@ -134,11 +297,16 @@ function updateAPIConfig() {
   if (!config) return;
   
   // 更新端点
-  document.getElementById('apiEndpoint').value = config.endpoint;
+  const endpointInput = document.getElementById('apiEndpoint');
+  endpointInput.value = config.endpoint;
+  
+  // 自定义API允许编辑端点，其他推荐只读（但也允许改）
+  // endpointInput.readOnly = provider !== 'custom';
   
   // 清空模型列表
   const modelSelect = document.getElementById('model');
   modelSelect.innerHTML = '<option value="">请先配置API Key</option>';
+  document.getElementById('modelTags').innerHTML = '';
   
   // 更新模型信息
   updateModelInfo();
@@ -152,11 +320,25 @@ function updateAPIConfig() {
   document.getElementById('temperature').value = config.defaultTemperature;
   updateTempValue();
   
-  // 如果已有API Key，尝试加载模型
-  const apiKey = document.getElementById('apiKey').value;
-  if (apiKey && apiKey.trim().length > 10) {
-    checkAPIAndLoadModels();
-  }
+  // 切换服务商时，不自动触发模型加载，防止使用错误的Key请求导致报错或限流
+  // 用户输入Key时会自动触发，或者初始化时会触发
+}
+
+// 更新截图识题API配置
+function updateImageAPIConfig() {
+  const provider = document.getElementById('imageApiProvider').value;
+  const config = API_CONFIGS[provider];
+  
+  if (!config) return;
+  
+  document.getElementById('imageApiEndpoint').value = config.endpoint;
+  document.getElementById('imageModel').innerHTML = '<option value="">请先配置图片 API Key</option>';
+  document.getElementById('imageModelTags').innerHTML = '';
+  document.getElementById('imageApiKeyHelp').innerHTML = `${config.helpText}<br>📷 模型列表按平台接口全量显示；截图能否成功由所选模型能力决定。`;
+  document.getElementById('imageMaxTokens').value = config.defaultMaxTokens;
+  document.getElementById('imageTemperature').value = config.defaultTemperature;
+  updateImageModelInfo();
+  updateImageTempValue();
 }
 
 // 检查API并加载模型列表
@@ -165,44 +347,63 @@ async function checkAPIAndLoadModels() {
   const apiKey = document.getElementById('apiKey').value;
   const apiEndpoint = document.getElementById('apiEndpoint').value;
   
-  if (!apiKey || apiKey.trim().length < 10) {
+  if (!apiKey || apiKey.trim().length < 5) {
     return;
   }
   
   const modelSelect = document.getElementById('model');
-  modelSelect.innerHTML = '<option value="">正在加载模型列表...</option>';
+  // 只有当列表为空或者当前是预设列表时才显示加载中
+  if (modelSelect.options.length <= 1) {
+     modelSelect.innerHTML = '<option value="">🔄 正在加载模型列表...</option>';
+  }
   
   try {
     const models = await loadModelsFromAPI(provider, apiKey, apiEndpoint);
     populateModelSelect(models);
+    showStatus('模型列表已更新', 'success');
   } catch (error) {
     console.error('加载模型失败:', error);
-    
-    // 显示详细错误信息
-    let errorMessage = '加载模型列表失败';
-    if (error.message.includes('401')) {
-      errorMessage = 'API Key无效或已过期，请检查您的API Key';
-    } else if (error.message.includes('403')) {
-      errorMessage = 'API Key权限不足，请检查账户状态';
-    } else if (error.message.includes('429')) {
-      errorMessage = '请求过于频繁，请稍后再试';
-    } else if (error.message.includes('400')) {
-      errorMessage = '请求参数错误，请检查API配置';
-    } else if (error.message.includes('fetch')) {
-      errorMessage = '网络连接失败，请检查网络连接';
-    } else {
-      errorMessage = `加载失败: ${error.message}`;
-    }
     
     // 使用预设模型作为备选
     const presetModels = PRESET_MODELS[provider] || [];
     if (presetModels.length > 0) {
-      console.log('使用预设模型作为备选');
       populateModelSelect(presetModels);
-      showStatus(`模型加载失败，已使用预设模型。错误: ${errorMessage}`, 'error');
+      showStatus(`自动获取失败，已加载预设模型`, 'error');
     } else {
-      modelSelect.innerHTML = '<option value="">加载失败，请检查API配置</option>';
-      showStatus(errorMessage, 'error');
+      modelSelect.innerHTML = '<option value="">⚠️ 加载失败，请手动输入模型ID</option>';
+      showStatus(`加载失败: ${error.message}`, 'error');
+    }
+  }
+}
+
+// 检查截图API并加载支持图片的模型列表
+async function checkImageAPIAndLoadModels() {
+  const provider = document.getElementById('imageApiProvider').value;
+  const apiKey = document.getElementById('imageApiKey').value;
+  const apiEndpoint = document.getElementById('imageApiEndpoint').value;
+  
+  if (!apiKey || apiKey.trim().length < 5) {
+    return;
+  }
+  
+  const modelSelect = document.getElementById('imageModel');
+  if (modelSelect.options.length <= 1) {
+    modelSelect.innerHTML = '<option value="">🔄 正在加载图片模型列表...</option>';
+  }
+  
+  try {
+    const models = await loadModelsFromAPI(provider, apiKey, apiEndpoint);
+    populateImageModelSelect(models);
+    showStatus('图片模型列表已更新', 'success');
+  } catch (error) {
+    console.error('加载图片模型失败:', error);
+    const presetModels = PRESET_MODELS[provider] || [];
+    if (presetModels.length > 0) {
+      populateImageModelSelect(presetModels);
+      showStatus('自动获取失败，已加载图片预设模型', 'error');
+    } else {
+      modelSelect.innerHTML = '<option value="">⚠️ 加载失败，请手动输入模型ID</option>';
+      showStatus(`图片模型加载失败: ${error.message}`, 'error');
     }
   }
 }
@@ -211,12 +412,21 @@ async function checkAPIAndLoadModels() {
 async function loadModelsFromAPI(provider, apiKey, apiEndpoint) {
   const config = API_CONFIGS[provider];
   
-  if (!config.modelsEndpoint) {
-    // 如果没有模型端点，使用预设模型
+  if (!config.modelsEndpoint && provider !== 'custom') {
+    // 如果没有模型端点且不是自定义，使用预设模型
     return PRESET_MODELS[provider] || [];
   }
   
+  // 自定义API如果没有填endpoint，尝试猜测
   let url = config.modelsEndpoint;
+  if (provider === 'custom') {
+      // 简单的猜测：如果 endpoint 包含 chat/completions，替换为 models
+      if (apiEndpoint.includes('chat/completions')) {
+          url = apiEndpoint.replace('chat/completions', 'models');
+      } else {
+          return []; // 无法猜测
+      }
+  }
   
   // 构建请求头
   const headers = {
@@ -224,65 +434,31 @@ async function loadModelsFromAPI(provider, apiKey, apiEndpoint) {
   };
   
   // 根据提供商设置认证头
-  if (provider === 'openai') {
+  const bearerProviders = [
+    'openai', 'deepseek', 'novita', 'openrouter', 'siliconflow', 'qwen',
+    'moonshot', 'zhipu', 'volcengine', 'minimax', 'groq', 'xai', 'mistral',
+    'custom'
+  ];
+
+  if (bearerProviders.includes(provider)) {
     headers['Authorization'] = `Bearer ${apiKey}`;
   } else if (provider === 'google') {
-    // Gemini API需要将API Key作为URL参数
     url = `${config.modelsEndpoint}?key=${apiKey}`;
-  } else if (provider === 'anthropic') {
-    headers['x-api-key'] = apiKey;
-    headers['anthropic-version'] = '2023-06-01';
-  } else {
-    headers['Authorization'] = `Bearer ${apiKey}`;
   }
   
   try {
-    console.log(`正在请求 ${provider} 模型列表:`, url);
-    console.log(`请求头:`, headers);
-    console.log(`API Key 长度:`, apiKey.length);
-    console.log(`API Key 前缀:`, apiKey.substring(0, 4));
-    
     const response = await fetch(url, {
       method: 'GET',
       headers: headers
     });
     
-    console.log(`${provider} API响应状态:`, response.status);
-    console.log(`${provider} API响应头:`, Object.fromEntries(response.headers.entries()));
-    
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`${provider} API错误响应:`, errorText);
-      
-      // 针对400错误提供更详细的诊断信息
-      if (response.status === 400) {
-        let diagnosticInfo = `400错误诊断信息:\n`;
-        diagnosticInfo += `- 提供商: ${provider}\n`;
-        diagnosticInfo += `- URL: ${url}\n`;
-        diagnosticInfo += `- API Key长度: ${apiKey.length}\n`;
-        diagnosticInfo += `- API Key前缀: ${apiKey.substring(0, 4)}\n`;
-        
-        if (provider === 'google') {
-          diagnosticInfo += `- 可能原因:\n`;
-          diagnosticInfo += `  1. API Key格式错误（应以AIza开头）\n`;
-          diagnosticInfo += `  2. API Key未启用或已过期\n`;
-          diagnosticInfo += `  3. 未在Google Cloud Console启用Generative Language API\n`;
-          diagnosticInfo += `  4. 账户配额不足\n`;
-        }
-        
-        console.error(diagnosticInfo);
-        throw new Error(`HTTP error! status: ${response.status}, response: ${errorText}\n\n${diagnosticInfo}`);
-      }
-      
-      throw new Error(`HTTP error! status: ${response.status}, response: ${errorText}`);
+      throw new Error(`HTTP ${response.status}`);
     }
     
     const data = await response.json();
-    console.log(`${provider} API响应数据:`, data);
-    
     return parseModelsFromResponse(provider, data);
   } catch (error) {
-    console.error(`加载 ${provider} 模型失败:`, error);
     throw error;
   }
 }
@@ -291,109 +467,77 @@ async function loadModelsFromAPI(provider, apiKey, apiEndpoint) {
 function parseModelsFromResponse(provider, data) {
   const models = [];
   
-  switch (provider) {
-    case 'openai':
-      if (data.data && Array.isArray(data.data)) {
-        data.data.forEach(model => {
-          const supportsImage = model.id.includes('vision') || 
-                               model.id.includes('gpt-4o') || 
-                               model.id.includes('gpt-4o-mini');
-          models.push({
-            id: model.id,
-            name: model.id,
-            supportsImage: supportsImage
-          });
-        });
+  // 标准 OpenAI 格式 (data.data)
+  if (data.data && Array.isArray(data.data)) {
+    data.data.forEach(model => {
+      const id = model.id;
+      let name = id;
+      let supportsImage = false;
+      
+      // 简单的特征检测
+      const idLower = id.toLowerCase();
+      if (
+        idLower.includes('vision') ||
+        idLower.includes('gpt-4o') ||
+        idLower.includes('claude-3') ||
+        idLower.includes('gemini') ||
+        idLower.includes('pixtral') ||
+        idLower.includes('glm-4v') ||
+        idLower.includes('qwen-vl') ||
+        idLower.includes('-vl') ||
+        idLower.includes('llama-4')
+      ) {
+        supportsImage = true;
       }
-      break;
       
-    case 'google':
-      console.log('解析Google Gemini模型数据:', data);
-      // Gemini API可能返回不同的格式
-      if (data.models && Array.isArray(data.models)) {
-        data.models.forEach(model => {
-          const supportsImage = model.name.includes('vision') || 
-                               model.name.includes('1.5-pro') || 
-                               model.name.includes('1.5-flash') ||
-                               model.name.includes('2.0') ||
-                               model.name.includes('2.5') ||
-                               model.name.includes('ultra');
-          
-          // 修正模型名称格式
-          let correctedName = model.name;
-          
-          // 如果模型名称包含完整路径，提取模型ID
-          if (correctedName.includes('/')) {
-            correctedName = correctedName.split('/').pop();
-          }
-          
-          // 确保模型名称格式正确
-          if (!correctedName.startsWith('models/')) {
-            correctedName = `models/${correctedName}`;
-          }
-          
-          models.push({
-            id: correctedName,
-            name: model.name,
-            originalName: model.name,
-            correctedName: correctedName,
-            supportsImage: supportsImage
-          });
-        });
-      } else if (data.data && Array.isArray(data.data)) {
-        // 另一种可能的响应格式
-        data.data.forEach(model => {
-          const supportsImage = model.name.includes('vision') || 
-                               model.name.includes('1.5-pro') || 
-                               model.name.includes('1.5-flash') ||
-                               model.name.includes('2.0') ||
-                               model.name.includes('2.5') ||
-                               model.name.includes('ultra');
-          
-          // 修正模型名称格式
-          let correctedName = model.name;
-          
-          if (correctedName.includes('/')) {
-            correctedName = correctedName.split('/').pop();
-          }
-          
-          if (!correctedName.startsWith('models/')) {
-            correctedName = `models/${correctedName}`;
-          }
-          
-          models.push({
-            id: correctedName,
-            name: model.name,
-            originalName: model.name,
-            correctedName: correctedName,
-            supportsImage: supportsImage
-          });
-        });
-      } else {
-        console.warn('未识别的Google Gemini响应格式:', data);
+      // 过滤掉一些显然不是 LLM 的模型 (如 whisper, tts, dall-e)
+      if (id.includes('whisper') || id.includes('tts') || id.includes('dall-e') || id.includes('embedding')) {
+        return;
       }
-      break;
-      
-    case 'anthropic':
-      // Anthropic不提供模型列表API，使用预设
-      return PRESET_MODELS.anthropic || [];
-      
-    case 'novita':
-      // Novita AI使用预设模型
-      return PRESET_MODELS.novita || [];
-      
-    case 'custom':
-      // 自定义API，返回空列表
-      return [];
+
+      models.push({
+        id: id,
+        name: name,
+        supportsImage: supportsImage
+      });
+    });
+    
+    // 排序：最新的/常用的排前面
+    models.sort((a, b) => {
+        // DeepSeek 特殊处理
+        if (a.id === 'deepseek-reasoner') return -1;
+        if (b.id === 'deepseek-reasoner') return 1;
+        return a.id.localeCompare(b.id);
+    });
+    
+    return models;
   }
   
-  console.log(`解析到 ${models.length} 个模型:`, models);
-  return models;
+  // Google Gemini 格式 (data.models)
+  if (data.models && Array.isArray(data.models)) {
+      data.models.forEach(model => {
+          let id = model.name;
+          if (id.startsWith('models/')) {
+              id = id.replace('models/', '');
+          }
+          const supportsImage = model.inputModalities && model.inputModalities.includes('IMAGE');
+          models.push({
+              id: id,
+              name: model.displayName || id,
+              supportsImage: supportsImage
+          });
+      });
+      return models;
+  }
+
+  return [];
 }
 
 // 填充模型选择框
 function populateModelSelect(models) {
   const modelSelect = document.getElementById('model');
+  const currentVal = modelSelect.value;
+  
   modelSelect.innerHTML = '';
   
   if (models.length === 0) {
@@ -401,51 +545,115 @@ function populateModelSelect(models) {
     return;
   }
   
-  // 按支持图片的模型优先排序
-  const sortedModels = models.sort((a, b) => {
-    if (a.supportsImage && !b.supportsImage) return -1;
-    if (!a.supportsImage && b.supportsImage) return 1;
-    return a.name.localeCompare(b.name);
-  });
-  
-  sortedModels.forEach(model => {
+  models.forEach(model => {
     const option = document.createElement('option');
     option.value = model.id;
-    option.textContent = model.name + (model.supportsImage ? ' 📷' : '');
+    let icon = '';
+    if (model.supportsImage) icon += ' 📷';
+    if (model.id.includes('reasoner') || model.id.includes('r1')) icon += ' 🧠';
+    
+    option.textContent = `${model.name || model.id}${icon}`;
     modelSelect.appendChild(option);
   });
   
-  // 选择第一个模型
-  if (sortedModels.length > 0) {
-    modelSelect.value = sortedModels[0].id;
-    updateModelInfo();
+  // 尝试恢复之前的选择，或者选第一个
+  if (currentVal && models.some(m => m.id === currentVal)) {
+      modelSelect.value = currentVal;
+  } else if (models.length > 0) {
+    modelSelect.value = models[0].id;
   }
+  
+  updateModelInfo();
+}
+
+// 填充截图识题模型选择框。这里不替用户判断模型类型，按平台返回全量展示。
+function populateImageModelSelect(models) {
+  const modelSelect = document.getElementById('imageModel');
+  const currentVal = modelSelect.value;
+  
+  modelSelect.innerHTML = '';
+  
+  if (models.length === 0) {
+    modelSelect.innerHTML = '<option value="">未找到可用模型</option>';
+    document.getElementById('imageModelInfo').textContent = '未从平台获取到模型列表，可以手动填写官网模型 Code。';
+    return;
+  }
+  
+  models.forEach(model => {
+    const option = document.createElement('option');
+    option.value = model.id;
+    let icon = '';
+    if (model.id.includes('reasoner') || model.id.includes('r1')) icon += ' 🧠';
+    option.textContent = `${model.name || model.id}${icon}`;
+    modelSelect.appendChild(option);
+  });
+  
+  if (currentVal && models.some(m => m.id === currentVal)) {
+    modelSelect.value = currentVal;
+  } else if (models.length > 0) {
+    modelSelect.value = models[0].id;
+  }
+  
+  updateImageModelInfo();
 }
 
 // 更新模型信息
 function updateModelInfo() {
-  const provider = document.getElementById('apiProvider').value;
   const model = document.getElementById('model').value;
+  const manualModel = document.getElementById('modelManual').value.trim();
   const modelSelect = document.getElementById('model');
-  const modelInfo = document.getElementById('modelInfo');
+  const tagsDiv = document.getElementById('modelTags');
+  const infoDiv = document.getElementById('modelInfo');
   
-  if (!model || model === '') {
-    modelInfo.textContent = '';
+  tagsDiv.innerHTML = '';
+  infoDiv.textContent = '如果官网显示的模型没有出现在下拉框，可以直接手动填写模型 Code。';
+  
+  if (manualModel) {
+    infoDiv.textContent = `将使用手动填写的模型：${manualModel}`;
     return;
   }
   
-  // 检查是否为支持图片的模型
-  const selectedOption = modelSelect.querySelector(`option[value="${model}"]`);
-  const supportsImage = selectedOption && selectedOption.textContent.includes('📷');
+  if (!model) return;
   
-  let infoText = '';
-  if (supportsImage) {
-    infoText = '支持图片输入，可用于截图识题功能';
+  const selectedOption = modelSelect.querySelector(`option[value="${model}"]`);
+  if (!selectedOption) return;
+  
+  const text = selectedOption.textContent;
+  
+  if (text.includes('📷')) {
+      tagsDiv.innerHTML += '<span class="tag">支持图片</span>';
   } else {
-    infoText = '仅支持文本输入，可用于文本选择功能';
+      // 用户反馈不想看到“文本模型”标签，或者我们默认所有模型都尝试支持图片
+      // 但为了UI信息准确，这里还是区分一下显示，只是实际逻辑上不再拦截
+      // 如果不想显示任何标签，可以注释掉下面这行
+      // tagsDiv.innerHTML += '<span class="tag" style="background:#f3f4f6; color:#666">文本模型</span>';
+  }
+}
+
+// 更新截图识题模型信息
+function updateImageModelInfo() {
+  const model = document.getElementById('imageModel').value;
+  const manualModel = document.getElementById('imageModelManual').value.trim();
+  const modelSelect = document.getElementById('imageModel');
+  const tagsDiv = document.getElementById('imageModelTags');
+  const infoDiv = document.getElementById('imageModelInfo');
+  
+  tagsDiv.innerHTML = '';
+  infoDiv.textContent = '这里显示平台返回的全部模型；截图能否成功取决于你选择的模型是否支持图片。';
+
+  if (manualModel) {
+    infoDiv.textContent = `将使用手动填写的截图模型：${manualModel}`;
+    return;
   }
   
-  modelInfo.textContent = infoText;
+  if (!model) return;
+  
+  const selectedOption = modelSelect.querySelector(`option[value="${model}"]`);
+  if (!selectedOption) return;
+  
+  const text = selectedOption.textContent;
+  
+  infoDiv.textContent = `将使用平台返回的模型：${model}`;
 }
 
 // 更新温度值显示
@@ -455,174 +663,195 @@ function updateTempValue() {
   tempValue.textContent = tempInput.value;
 }
 
+// 更新截图识题温度值显示
+function updateImageTempValue() {
+  const tempInput = document.getElementById('imageTemperature');
+  const tempValue = document.getElementById('imageTempValue');
+  tempValue.textContent = tempInput.value;
+}
+
 // 加载设置
 function loadSettings() {
-  // 检查扩展是否仍然有效
-  if (!chrome.storage || !chrome.storage.sync) {
-    showStatus('扩展上下文已失效，请刷新页面', 'error');
-    return;
-  }
+  if (!chrome.storage || !chrome.storage.sync) return;
   
   chrome.storage.sync.get([
     'apiProvider', 'apiKey', 'apiEndpoint', 'model', 'maxTokens', 
-    'temperature', 'showFloatingIcon'
+    'temperature', 'showFloatingIcon', 'fastMode',
+    'textApiProvider', 'textApiKey', 'textApiEndpoint', 'textModel', 'textMaxTokens', 'textTemperature',
+    'imageApiProvider', 'imageApiKey', 'imageApiEndpoint', 'imageModel', 'imageMaxTokens', 'imageTemperature'
   ], function(result) {
-    if (chrome.runtime.lastError) {
-      const error = chrome.runtime.lastError;
-      if (error.message.includes('Extension context invalidated')) {
-        showStatus('扩展已重新加载，请刷新页面', 'error');
-      } else {
-        showStatus('加载设置失败: ' + error.message, 'error');
-      }
-      return;
-    }
-    
-    // 加载API提供商
-    if (result.apiProvider) {
-      document.getElementById('apiProvider').value = result.apiProvider;
-      updateAPIConfig();
-    }
-    
-    // 加载其他设置
-    if (result.apiKey) {
-      document.getElementById('apiKey').value = result.apiKey;
-    }
-    if (result.apiEndpoint) {
-      document.getElementById('apiEndpoint').value = result.apiEndpoint;
-    }
-    if (result.maxTokens) {
-      document.getElementById('maxTokens').value = result.maxTokens;
-    }
-    if (result.temperature) {
-      document.getElementById('temperature').value = result.temperature;
+    const textApiProvider = result.textApiProvider || result.apiProvider || 'deepseek';
+    const textApiKey = result.textApiKey || result.apiKey || '';
+    const textApiEndpoint = result.textApiEndpoint || result.apiEndpoint || '';
+    const textModel = result.textModel || result.model || '';
+    const textMaxTokens = result.textMaxTokens || result.maxTokens;
+    const textTemperature = result.textTemperature || result.temperature;
+
+    document.getElementById('apiProvider').value = textApiProvider;
+    updateAPIConfig();
+    if (textApiKey) document.getElementById('apiKey').value = textApiKey;
+    if (textApiEndpoint) document.getElementById('apiEndpoint').value = textApiEndpoint;
+    if (textMaxTokens) document.getElementById('maxTokens').value = textMaxTokens;
+    if (textTemperature) {
+      document.getElementById('temperature').value = textTemperature;
       updateTempValue();
     }
+
+    const imageApiProvider = result.imageApiProvider || 'google';
+    document.getElementById('imageApiProvider').value = imageApiProvider;
+    updateImageAPIConfig();
+    if (result.imageApiKey) document.getElementById('imageApiKey').value = result.imageApiKey;
+    if (result.imageApiEndpoint) document.getElementById('imageApiEndpoint').value = result.imageApiEndpoint;
+    if (result.imageMaxTokens) document.getElementById('imageMaxTokens').value = result.imageMaxTokens;
+    if (result.imageTemperature) {
+      document.getElementById('imageTemperature').value = result.imageTemperature;
+      updateImageTempValue();
+    }
+
     if (result.showFloatingIcon !== undefined) {
       document.getElementById('showFloatingIcon').checked = result.showFloatingIcon;
     }
-    
-    // 如果有API Key，加载模型列表
-    if (result.apiKey && result.apiKey.trim().length > 10) {
-      setTimeout(() => {
-        checkAPIAndLoadModels();
-      }, 500);
+    if (result.fastMode !== undefined) {
+      document.getElementById('fastMode').checked = result.fastMode;
     }
     
-    // 加载模型（在模型列表加载完成后）
-    if (result.model) {
-      setTimeout(() => {
-        document.getElementById('model').value = result.model;
-        updateModelInfo();
-      }, 1000);
+    // 延迟加载模型列表，确保 key 已填入
+    if (textApiKey) {
+        checkAPIAndLoadModels().then(() => {
+            restoreModelSelection('model', 'modelManual', textModel, updateModelInfo);
+        });
+    } else {
+      restoreModelSelection('model', 'modelManual', textModel, updateModelInfo);
+    }
+
+    if (result.imageApiKey) {
+      checkImageAPIAndLoadModels().then(() => {
+        restoreModelSelection('imageModel', 'imageModelManual', result.imageModel, updateImageModelInfo);
+      });
+    } else {
+      restoreModelSelection('imageModel', 'imageModelManual', result.imageModel, updateImageModelInfo);
     }
   });
 }
 
 // 保存设置
 function saveSettings() {
-  const apiProvider = document.getElementById('apiProvider').value;
-  const apiKey = document.getElementById('apiKey').value;
-  const apiEndpoint = document.getElementById('apiEndpoint').value;
-  const model = document.getElementById('model').value;
-  const maxTokens = parseInt(document.getElementById('maxTokens').value);
-  const temperature = parseFloat(document.getElementById('temperature').value);
+  const textApiProvider = document.getElementById('apiProvider').value;
+  const textApiKey = document.getElementById('apiKey').value;
+  const textApiEndpoint = document.getElementById('apiEndpoint').value;
+  const textModel = getSelectedOrManualModel('model', 'modelManual');
+  const textMaxTokens = parseInt(document.getElementById('maxTokens').value);
+  const textTemperature = parseFloat(document.getElementById('temperature').value);
+  const imageApiProvider = document.getElementById('imageApiProvider').value;
+  const imageApiKey = document.getElementById('imageApiKey').value;
+  const imageApiEndpoint = document.getElementById('imageApiEndpoint').value;
+  const imageModel = getSelectedOrManualModel('imageModel', 'imageModelManual');
+  const imageMaxTokens = parseInt(document.getElementById('imageMaxTokens').value);
+  const imageTemperature = parseFloat(document.getElementById('imageTemperature').value);
   const showFloatingIcon = document.getElementById('showFloatingIcon').checked;
-  
-  // 检查扩展是否仍然有效
-  if (!chrome.storage || !chrome.storage.sync) {
-    showStatus('扩展上下文已失效，请刷新页面', 'error');
-    return;
-  }
+  const fastMode = document.getElementById('fastMode').checked;
   
   chrome.storage.sync.set({
-    apiProvider: apiProvider,
-    apiKey: apiKey,
-    apiEndpoint: apiEndpoint,
-    model: model,
-    maxTokens: maxTokens,
-    temperature: temperature,
-    showFloatingIcon: showFloatingIcon
+    textApiProvider,
+    textApiKey,
+    textApiEndpoint,
+    textModel,
+    textMaxTokens,
+    textTemperature,
+    imageApiProvider,
+    imageApiKey,
+    imageApiEndpoint,
+    imageModel,
+    imageMaxTokens,
+    imageTemperature,
+    showFloatingIcon,
+    fastMode,
+    // 保留旧字段，避免旧 content script 或旧设置页读取不到。
+    apiProvider: textApiProvider,
+    apiKey: textApiKey,
+    apiEndpoint: textApiEndpoint,
+    model: textModel,
+    maxTokens: textMaxTokens,
+    temperature: textTemperature
   }, function() {
-    if (chrome.runtime.lastError) {
-      const error = chrome.runtime.lastError;
-      if (error.message.includes('Extension context invalidated')) {
-        showStatus('扩展已重新加载，请刷新页面', 'error');
-      } else {
-        showStatus('保存失败: ' + error.message, 'error');
-      }
-    } else {
-      showStatus('设置已保存', 'success');
-      
-      // 通知content script更新设置
-      if (chrome.tabs && chrome.tabs.query) {
+    showStatus('设置已保存', 'success');
+    
+    // 通知content script
+    if (chrome.tabs && chrome.tabs.query) {
         chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-          if (chrome.runtime.lastError) {
-            // 忽略标签页查询错误
-            return;
-          }
-          if (tabs && tabs[0] && chrome.tabs.sendMessage) {
-            chrome.tabs.sendMessage(tabs[0].id, {
-              action: 'updateSettings',
-              settings: {
-                apiProvider, apiKey, apiEndpoint, model, maxTokens, 
-                temperature, showFloatingIcon
-              }
-            });
-          }
+            if (tabs[0]) {
+                chrome.tabs.sendMessage(tabs[0].id, {
+                    action: 'updateSettings',
+                    settings: {
+                      textApiProvider,
+                      textApiKey,
+                      textApiEndpoint,
+                      textModel,
+                      textMaxTokens,
+                      textTemperature,
+                      imageApiProvider,
+                      imageApiKey,
+                      imageApiEndpoint,
+                      imageModel,
+                      imageMaxTokens,
+                      imageTemperature,
+                      showFloatingIcon,
+                      fastMode,
+                      apiProvider: textApiProvider,
+                      apiKey: textApiKey,
+                      apiEndpoint: textApiEndpoint,
+                      model: textModel,
+                      maxTokens: textMaxTokens,
+                      temperature: textTemperature
+                    }
+                });
+            }
         });
-      }
     }
   });
 }
 
-// 测试API连接
-function testAPI() {
-  const apiProvider = document.getElementById('apiProvider').value;
-  const apiKey = document.getElementById('apiKey').value;
-  const apiEndpoint = document.getElementById('apiEndpoint').value;
-  const model = document.getElementById('model').value;
-  const maxTokens = parseInt(document.getElementById('maxTokens').value);
-  const temperature = parseFloat(document.getElementById('temperature').value);
+// 测试文字API连接
+function testTextAPI() {
+  testAPIFromFields({
+    apiProvider: document.getElementById('apiProvider').value,
+    apiKey: document.getElementById('apiKey').value,
+    apiEndpoint: document.getElementById('apiEndpoint').value,
+    model: getSelectedOrManualModel('model', 'modelManual'),
+    label: '文字 API'
+  });
+}
+
+// 测试截图API连接
+function testImageAPI() {
+  testAPIFromFields({
+    apiProvider: document.getElementById('imageApiProvider').value,
+    apiKey: document.getElementById('imageApiKey').value,
+    apiEndpoint: document.getElementById('imageApiEndpoint').value,
+    model: getSelectedOrManualModel('imageModel', 'imageModelManual'),
+    label: '截图 API'
+  });
+}
+
+function testAPIFromFields({ apiProvider, apiKey, apiEndpoint, model, label }) {
   
   if (!apiKey) {
-    showStatus('请先输入API Key', 'error');
+    showStatus(`请先输入${label} Key`, 'error');
     return;
   }
   
-  if (!model) {
-    showStatus('请先选择模型', 'error');
-    return;
-  }
+  showStatus(`正在测试${label}连接...`, 'success');
   
-  showStatus('正在测试API连接...', 'success');
-  
-  // 检查扩展是否仍然有效
-  if (!chrome.runtime || !chrome.runtime.sendMessage) {
-    showStatus('扩展上下文已失效，请刷新页面', 'error');
-    return;
-  }
-  
-  // 发送测试请求到background script
   chrome.runtime.sendMessage({
     action: 'testAPI',
-    apiProvider: apiProvider,
-    apiKey: apiKey,
-    apiEndpoint: apiEndpoint,
-    model: model,
-    maxTokens: maxTokens,
-    temperature: temperature
+    apiProvider, apiKey, apiEndpoint, model,
+    maxTokens: 100,
+    temperature: 0.7
   }, function(response) {
-    if (chrome.runtime.lastError) {
-      const error = chrome.runtime.lastError;
-      if (error.message.includes('Extension context invalidated')) {
-        showStatus('扩展已重新加载，请刷新页面', 'error');
-      } else {
-        showStatus('API连接失败: ' + error.message, 'error');
-      }
-    } else if (response.success) {
-      showStatus('API连接成功！', 'success');
+    if (response && response.success) {
+      showStatus(`${label}连接成功！`, 'success');
     } else {
-      showStatus('API连接失败: ' + response.error, 'error');
+      showStatus(`${label}连接失败: ${response ? response.error : '未知错误'}`, 'error');
     }
   });
 }
@@ -633,9 +862,7 @@ function showStatus(message, type) {
   statusDiv.textContent = message;
   statusDiv.className = 'status ' + type;
   statusDiv.style.display = 'block';
-  
-  // 3秒后自动隐藏
-  setTimeout(function() {
+  setTimeout(() => {
     statusDiv.style.display = 'none';
   }, 3000);
-} 
+}

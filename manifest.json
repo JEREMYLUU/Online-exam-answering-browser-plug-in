@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "搜题答案助手",
-  "version": "2.5.1",
-  "description": "一键截图识题与文字搜题，支持精简弹窗、双API配置、免费模型平台和设置引导",
+  "version": "2.6.0",
+  "description": "一键截图识题与文字搜题，支持轻量操作面板、双API配置、免费模型平台和设置引导",
   "author": "搜题答案助手开发团队",
   "icons": {
     "16": "icons/icon16.png",

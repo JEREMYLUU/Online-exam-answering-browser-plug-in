@@ -210,6 +210,22 @@ class QuestionHelper {
       if (request.action === 'updateSettings') {
         this.settings = { ...this.settings, ...request.settings };
         this.updateUI();
+        sendResponse({ success: true });
+        return false;
+      }
+
+      if (request.action === 'runScreenshot') {
+        this.handleScreenshotClick()
+          .then(() => sendResponse({ success: true }))
+          .catch((error) => sendResponse({ success: false, error: error.message }));
+        return true;
+      }
+
+      if (request.action === 'runSelectedText') {
+        this.handleButtonClick()
+          .then(() => sendResponse({ success: true }))
+          .catch((error) => sendResponse({ success: false, error: error.message }));
+        return true;
       }
     });
     

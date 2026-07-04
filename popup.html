@@ -1,177 +1,74 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h3>✨ 搜题助手</h3>
-      <div class="header-actions">
-        <button id="openOptions" class="icon-btn" title="打开完整设置">
-          ⚙️ 设置
-        </button>
-        <button id="openTutorial" class="icon-btn" title="API 申请教程">
-          📖 教程
-        </button>
-      </div>
-    </div>
-
-    <div class="usage-note">
-      <strong>常用配置</strong>
-      <span>这里只保留服务商、Key、模型。端点、手动模型 Code 和高级参数请点“设置”。</span>
-    </div>
-
-    <div class="config-section">
-      <div class="section-title">
-        <strong>文字搜题 API</strong>
-        <span>选中文字后点击 ? 使用</span>
-      </div>
-
-      <div class="form-group">
-        <label for="apiProvider">🤖 AI 服务商</label>
-        <select id="apiProvider">
-        <option value="deepseek">🚀 DeepSeek (深度求索)</option>
-        <option value="qwen">🆓 阿里云百炼 / 通义千问</option>
-        <option value="google">🆓 Google Gemini</option>
-        <option value="openrouter">🆓 OpenRouter</option>
-        <option value="siliconflow">🆓 SiliconFlow 硅基流动</option>
-        <option value="groq">🆓 Groq</option>
-        <option value="mistral">🆓 Mistral AI</option>
-        <option value="custom">🔧 自定义 API</option>
-        </select>
-      </div>
-      
-      <div class="form-group">
-        <label for="apiKey">🔑 API Key</label>
-        <input type="password" id="apiKey" placeholder="sk-..." required>
-        <div class="help-text compact-hidden" id="apiKeyHelp"></div>
-      </div>
-      
-      <div class="form-group compact-hidden" id="endpointGroup">
-        <label for="apiEndpoint">🌐 API 端点</label>
-        <input type="text" id="apiEndpoint" placeholder="https://api.example.com/v1/...">
-      </div>
-      
-      <div class="form-group">
-        <label for="model">🧠 模型</label>
-        <select id="model">
-          <option value="">请先配置 API Key</option>
-        </select>
-        <input class="compact-hidden" type="text" id="modelManual" placeholder="官网模型 Code（可选）：例如 qwen3.7-plus" style="margin-top: 8px;">
-        <div class="model-tags" id="modelTags"></div>
-        <div class="help-text compact-hidden" id="modelInfo">如果官网显示的模型没有出现在下拉框，可以直接在上方手动填写模型 Code。</div>
-      </div>
-      
-      <!-- Advanced Settings Toggle -->
-      <details class="compact-hidden" style="margin-bottom: 15px; cursor: pointer;">
-        <summary style="font-size: 12px; color: #666;">⚙️ 高级设置</summary>
-        <div style="margin-top: 10px; padding-left: 10px; border-left: 2px solid #eee;">
-          <div class="form-group">
-            <label for="maxTokens">最大长度 (Tokens)</label>
-            <input type="number" id="maxTokens" value="1500" min="100" max="100000">
-          </div>
-          
-          <div class="form-group">
-            <label for="temperature">创造性 (Temperature): <span id="tempValue">0.7</span></label>
-            <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.7">
-          </div>
+  <main class="popup-shell">
+    <header class="account-row">
+      <div class="brand">
+        <div class="brand-icon">答</div>
+        <div>
+          <strong>搜题助手</strong>
+          <span id="configState">检查配置中...</span>
         </div>
-      </details>
-    </div>
-
-    <div class="config-section">
-      <div class="section-title">
-        <strong>截图识题 API</strong>
-        <span>点击“截图识题”使用</span>
       </div>
-
-      <div class="form-group">
-        <label for="imageApiProvider">📷 截图 AI 服务商</label>
-        <select id="imageApiProvider">
-          <option value="google">🆓 Google Gemini (免费额度 / 截图优先)</option>
-          <option value="qwen">🆓 阿里云百炼 / 通义千问</option>
-          <option value="openrouter">🆓 OpenRouter</option>
-          <option value="siliconflow">🆓 SiliconFlow 硅基流动</option>
-          <option value="mistral">🆓 Mistral AI</option>
-          <option value="openai">🤖 OpenAI (GPT)</option>
-          <option value="custom">🔧 自定义 API</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="imageApiKey">🔑 图片 API Key</label>
-        <input type="password" id="imageApiKey" placeholder="可与文字 API 使用不同 Key">
-        <div class="help-text compact-hidden" id="imageApiKeyHelp"></div>
-      </div>
-
-      <div class="form-group compact-hidden">
-        <label for="imageApiEndpoint">🌐 图片 API 端点</label>
-        <input type="text" id="imageApiEndpoint" placeholder="https://api.example.com/v1/...">
-      </div>
-
-      <div class="form-group">
-        <label for="imageModel">🧠 图片模型</label>
-        <select id="imageModel">
-          <option value="">请先配置图片 API Key</option>
-        </select>
-        <input class="compact-hidden" type="text" id="imageModelManual" placeholder="官网模型 Code（可选）：例如 qwen3-vl-flash" style="margin-top: 8px;">
-        <div class="model-tags" id="imageModelTags"></div>
-        <div class="help-text compact-hidden" id="imageModelInfo">这里显示平台返回的全部模型；截图能否成功取决于你选择的模型是否支持图片。</div>
-      </div>
-
-      <details class="compact-hidden" style="margin-bottom: 15px; cursor: pointer;">
-        <summary style="font-size: 12px; color: #666;">⚙️ 图片高级设置</summary>
-        <div style="margin-top: 10px; padding-left: 10px; border-left: 2px solid #eee;">
-          <div class="form-group">
-            <label for="imageMaxTokens">最大长度 (Tokens)</label>
-            <input type="number" id="imageMaxTokens" value="2500" min="100" max="100000">
-          </div>
-
-          <div class="form-group">
-            <label for="imageTemperature">创造性 (Temperature): <span id="imageTempValue">0.7</span></label>
-            <input type="range" id="imageTemperature" min="0" max="2" step="0.1" value="0.7">
-          </div>
-        </div>
-      </details>
-    </div>
-    
-    <!-- Feature Toggles -->
-    <div class="toggle-group">
-      <label for="showFloatingIcon" style="cursor: pointer; margin:0;">显示浮动图标 (选中文本时)</label>
-      <label class="switch">
-        <input type="checkbox" id="showFloatingIcon" checked>
-        <span class="slider"></span>
+      <label class="pro-switch" title="会员模式后续开放">
+        <span>Pro 未开启</span>
+        <input id="proMode" type="checkbox" disabled>
+        <i></i>
       </label>
-    </div>
+    </header>
 
-    <div class="toggle-group">
-      <label for="fastMode" style="cursor: pointer; margin:0;">快速模式 (答案优先，解析简短)</label>
-      <label class="switch">
-        <input type="checkbox" id="fastMode" checked>
-        <span class="slider"></span>
-      </label>
-    </div>
-    
-    <!-- Actions -->
-    <button id="saveSettings" class="btn btn-primary">
-      💾 保存设置
-    </button>
-    <button id="testTextAPI" class="btn btn-secondary">
-      ⚡ 测试文字 API
-    </button>
-    <button id="testImageAPI" class="btn btn-secondary">
-      📷 测试截图 API
-    </button>
-    
-    <div id="status" class="status"></div>
-    
-    <div class="footer">
-      v2.5.1 · 精简弹窗 · 更多配置在设置页
-    </div>
-  </div>
-  
+    <section class="model-card">
+      <button class="model-row" id="openTextSettings" type="button">
+        <span>文字搜题</span>
+        <strong id="textModelSummary">未配置</strong>
+      </button>
+      <button class="model-row" id="openImageSettings" type="button">
+        <span>截图识题</span>
+        <strong id="imageModelSummary">未配置</strong>
+      </button>
+      <div class="model-row static">
+        <span>快速模式</span>
+        <label class="switch">
+          <input id="fastMode" type="checkbox" checked>
+          <i></i>
+        </label>
+      </div>
+    </section>
+
+    <section class="primary-action">
+      <button id="runScreenshot" class="icon-only" type="button" title="截图识题">📷</button>
+      <button id="runTextAnswer" class="main-btn" type="button">搜题 / 截图识题</button>
+    </section>
+
+    <section class="quick-grid">
+      <button id="testConnection" type="button">
+        <span>⚡</span>
+        <strong>测试连接</strong>
+      </button>
+      <button id="openOptions" type="button">
+        <span>⚙️</span>
+        <strong>设置</strong>
+      </button>
+      <button id="openTutorial" type="button">
+        <span>📖</span>
+        <strong>教程</strong>
+      </button>
+      <button id="openOptionsFooter" type="button">
+        <span>🧠</span>
+        <strong>更多功能</strong>
+      </button>
+    </section>
+
+    <footer>
+      <span>v2.6.0</span>
+      <span id="statusText">选中文字后点页面浮标，或直接截图识题</span>
+    </footer>
+  </main>
+
   <script src="popup.js"></script>
 </body>
 </html>

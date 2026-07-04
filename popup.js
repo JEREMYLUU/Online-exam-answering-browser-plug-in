@@ -67,6 +67,12 @@ function restoreModelSelection(selectId, manualId, modelId, updateFn) {
   updateFn();
 }
 
+function setSelectValueOrFallback(selectId, value, fallback) {
+  const select = document.getElementById(selectId);
+  const hasValue = Array.from(select.options).some(option => option.value === value);
+  select.value = hasValue ? value : fallback;
+}
+
 // API配置定义
 const API_CONFIGS = {
   novita: {
@@ -298,7 +304,10 @@ function updateAPIConfig() {
   const provider = document.getElementById('apiProvider').value;
   const config = API_CONFIGS[provider];
   
-  if (!config) return;
+  if (!config) {
+    setSelectValueOrFallback('apiProvider', 'deepseek', 'deepseek');
+    return updateAPIConfig();
+  }
   
   // 更新端点
   const endpointInput = document.getElementById('apiEndpoint');
@@ -333,7 +342,10 @@ function updateImageAPIConfig() {
   const provider = document.getElementById('imageApiProvider').value;
   const config = API_CONFIGS[provider];
   
-  if (!config) return;
+  if (!config) {
+    setSelectValueOrFallback('imageApiProvider', 'google', 'google');
+    return updateImageAPIConfig();
+  }
   
   document.getElementById('imageApiEndpoint').value = config.endpoint;
   document.getElementById('imageModel').innerHTML = '<option value="">请先配置图片 API Key</option>';
@@ -691,7 +703,7 @@ function loadSettings() {
     const textMaxTokens = result.textMaxTokens || result.maxTokens;
     const textTemperature = result.textTemperature || result.temperature;
 
-    document.getElementById('apiProvider').value = textApiProvider;
+    setSelectValueOrFallback('apiProvider', textApiProvider, 'deepseek');
     updateAPIConfig();
     if (textApiKey) document.getElementById('apiKey').value = textApiKey;
     if (textApiEndpoint) document.getElementById('apiEndpoint').value = textApiEndpoint;
@@ -702,7 +714,7 @@ function loadSettings() {
     }
 
     const imageApiProvider = result.imageApiProvider || 'google';
-    document.getElementById('imageApiProvider').value = imageApiProvider;
+    setSelectValueOrFallback('imageApiProvider', imageApiProvider, 'google');
     updateImageAPIConfig();
     if (result.imageApiKey) document.getElementById('imageApiKey').value = result.imageApiKey;
     if (result.imageApiEndpoint) document.getElementById('imageApiEndpoint').value = result.imageApiEndpoint;

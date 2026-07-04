@@ -14,7 +14,7 @@
 }
 
 body {
-  width: 380px;
+  width: 360px;
   margin: 0;
   padding: 16px;
   font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
@@ -72,6 +72,10 @@ body {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: #FFFFFF;
+}
+
+.compact-hidden {
+  display: none !important;
 }
 
 .section-title {

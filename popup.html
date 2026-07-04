@@ -19,8 +19,8 @@
     </div>
 
     <div class="usage-note">
-      <strong>两种模式分开配置</strong>
-      <span>选中文字搜题用文本模型；截图识题必须用支持图片的视觉模型。</span>
+      <strong>常用配置</strong>
+      <span>这里只保留服务商、Key、模型。端点、手动模型 Code 和高级参数请点“设置”。</span>
     </div>
 
     <div class="config-section">
@@ -32,21 +32,13 @@
       <div class="form-group">
         <label for="apiProvider">🤖 AI 服务商</label>
         <select id="apiProvider">
-        <option value="google">🆓 Google Gemini (免费额度 / 截图优先)</option>
-        <option value="openrouter">🆓 OpenRouter (免费模型 / 聚合平台)</option>
-        <option value="siliconflow">🆓 SiliconFlow 硅基流动 (免费模型)</option>
-        <option value="qwen">🆓 阿里云百炼 / 通义千问 (新人免费额度)</option>
-        <option value="groq">🆓 Groq (免费试用 / 文本高速)</option>
-        <option value="mistral">🆓 Mistral AI (Free mode)</option>
         <option value="deepseek">🚀 DeepSeek (深度求索)</option>
-        <option value="novita">⚡ MegaLLM</option>
-        <option value="openai">🤖 OpenAI (GPT)</option>
-        <option value="anthropic">🧠 Anthropic (Claude)</option>
-        <option value="moonshot">🌙 Moonshot / Kimi</option>
-        <option value="zhipu">✨ 智谱 GLM</option>
-        <option value="volcengine">🔥 火山方舟 / 豆包</option>
-        <option value="minimax">🎭 MiniMax</option>
-        <option value="xai">𝕏 xAI</option>
+        <option value="qwen">🆓 阿里云百炼 / 通义千问</option>
+        <option value="google">🆓 Google Gemini</option>
+        <option value="openrouter">🆓 OpenRouter</option>
+        <option value="siliconflow">🆓 SiliconFlow 硅基流动</option>
+        <option value="groq">🆓 Groq</option>
+        <option value="mistral">🆓 Mistral AI</option>
         <option value="custom">🔧 自定义 API</option>
         </select>
       </div>
@@ -54,10 +46,10 @@
       <div class="form-group">
         <label for="apiKey">🔑 API Key</label>
         <input type="password" id="apiKey" placeholder="sk-..." required>
-        <div class="help-text" id="apiKeyHelp"></div>
+        <div class="help-text compact-hidden" id="apiKeyHelp"></div>
       </div>
       
-      <div class="form-group" id="endpointGroup">
+      <div class="form-group compact-hidden" id="endpointGroup">
         <label for="apiEndpoint">🌐 API 端点</label>
         <input type="text" id="apiEndpoint" placeholder="https://api.example.com/v1/...">
       </div>
@@ -67,13 +59,13 @@
         <select id="model">
           <option value="">请先配置 API Key</option>
         </select>
-        <input type="text" id="modelManual" placeholder="官网模型 Code（可选）：例如 qwen3.7-plus" style="margin-top: 8px;">
+        <input class="compact-hidden" type="text" id="modelManual" placeholder="官网模型 Code（可选）：例如 qwen3.7-plus" style="margin-top: 8px;">
         <div class="model-tags" id="modelTags"></div>
-        <div class="help-text" id="modelInfo">如果官网显示的模型没有出现在下拉框，可以直接在上方手动填写模型 Code。</div>
+        <div class="help-text compact-hidden" id="modelInfo">如果官网显示的模型没有出现在下拉框，可以直接在上方手动填写模型 Code。</div>
       </div>
       
       <!-- Advanced Settings Toggle -->
-      <details style="margin-bottom: 15px; cursor: pointer;">
+      <details class="compact-hidden" style="margin-bottom: 15px; cursor: pointer;">
         <summary style="font-size: 12px; color: #666;">⚙️ 高级设置</summary>
         <div style="margin-top: 10px; padding-left: 10px; border-left: 2px solid #eee;">
           <div class="form-group">
@@ -92,23 +84,18 @@
     <div class="config-section">
       <div class="section-title">
         <strong>截图识题 API</strong>
-        <span>点击“截图识题”使用，必须选支持图片的模型</span>
+        <span>点击“截图识题”使用</span>
       </div>
 
       <div class="form-group">
         <label for="imageApiProvider">📷 截图 AI 服务商</label>
         <select id="imageApiProvider">
           <option value="google">🆓 Google Gemini (免费额度 / 截图优先)</option>
-          <option value="openrouter">🆓 OpenRouter (免费模型 / 聚合平台)</option>
-          <option value="siliconflow">🆓 SiliconFlow 硅基流动 (免费模型)</option>
-          <option value="qwen">🆓 阿里云百炼 / 通义千问 (新人免费额度)</option>
-          <option value="mistral">🆓 Mistral AI (Free mode)</option>
+          <option value="qwen">🆓 阿里云百炼 / 通义千问</option>
+          <option value="openrouter">🆓 OpenRouter</option>
+          <option value="siliconflow">🆓 SiliconFlow 硅基流动</option>
+          <option value="mistral">🆓 Mistral AI</option>
           <option value="openai">🤖 OpenAI (GPT)</option>
-          <option value="anthropic">🧠 Anthropic (Claude)</option>
-          <option value="zhipu">✨ 智谱 GLM</option>
-          <option value="volcengine">🔥 火山方舟 / 豆包</option>
-          <option value="minimax">🎭 MiniMax</option>
-          <option value="groq">⚡ Groq</option>
           <option value="custom">🔧 自定义 API</option>
         </select>
       </div>
@@ -116,10 +103,10 @@
       <div class="form-group">
         <label for="imageApiKey">🔑 图片 API Key</label>
         <input type="password" id="imageApiKey" placeholder="可与文字 API 使用不同 Key">
-        <div class="help-text" id="imageApiKeyHelp"></div>
+        <div class="help-text compact-hidden" id="imageApiKeyHelp"></div>
       </div>
 
-      <div class="form-group">
+      <div class="form-group compact-hidden">
         <label for="imageApiEndpoint">🌐 图片 API 端点</label>
         <input type="text" id="imageApiEndpoint" placeholder="https://api.example.com/v1/...">
       </div>
@@ -129,12 +116,12 @@
         <select id="imageModel">
           <option value="">请先配置图片 API Key</option>
         </select>
-        <input type="text" id="imageModelManual" placeholder="官网模型 Code（可选）：例如 qwen3-vl-flash" style="margin-top: 8px;">
+        <input class="compact-hidden" type="text" id="imageModelManual" placeholder="官网模型 Code（可选）：例如 qwen3-vl-flash" style="margin-top: 8px;">
         <div class="model-tags" id="imageModelTags"></div>
-        <div class="help-text" id="imageModelInfo">这里显示平台返回的全部模型；截图能否成功取决于你选择的模型是否支持图片。</div>
+        <div class="help-text compact-hidden" id="imageModelInfo">这里显示平台返回的全部模型；截图能否成功取决于你选择的模型是否支持图片。</div>
       </div>
 
-      <details style="margin-bottom: 15px; cursor: pointer;">
+      <details class="compact-hidden" style="margin-bottom: 15px; cursor: pointer;">
         <summary style="font-size: 12px; color: #666;">⚙️ 图片高级设置</summary>
         <div style="margin-top: 10px; padding-left: 10px; border-left: 2px solid #eee;">
           <div class="form-group">
@@ -181,7 +168,7 @@
     <div id="status" class="status"></div>
     
     <div class="footer">
-      v2.5.0 · 文字/截图双 API · 设置引导
+      v2.5.1 · 精简弹窗 · 更多配置在设置页
     </div>
   </div>
   

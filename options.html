@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>设置中心 - 搜题答案助手</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>搜题答案助手</h1>
+      <p id="pageSubtitle">设置中心</p>
+    </div>
+    <div class="topbar-actions">
+      <button id="openTutorial" class="ghost-btn">API 教程</button>
+      <button id="saveAllTop" class="primary-btn">保存设置</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <nav class="sidebar" aria-label="设置导航">
+      <button class="nav-item active" data-panel="welcomePanel">快速开始</button>
+      <button class="nav-item" data-panel="modelPanel">模型服务</button>
+      <button class="nav-item" data-panel="preferencePanel">使用偏好</button>
+      <button class="nav-item" data-panel="accountPanel">账户套餐</button>
+      <button class="nav-item" data-panel="aboutPanel">关于</button>
+    </nav>
+
+    <section class="content">
+      <section id="welcomePanel" class="panel active">
+        <div class="welcome-band">
+          <div>
+            <span class="eyebrow">首次配置</span>
+            <h2>先选一种使用方式</h2>
+            <p>新手建议先用有免费额度的平台跑通截图识题，再按需要配置文字模型。</p>
+          </div>
+          <div class="setup-progress">
+            <span id="setupState">未完成配置</span>
+          </div>
+        </div>
+
+        <div class="choice-grid">
+          <button class="choice selected" data-use="free">
+            <strong>免费额度优先</strong>
+            <span>推荐 Gemini、阿里云百炼、OpenRouter、SiliconFlow、Groq、Mistral。</span>
+          </button>
+          <button class="choice" data-use="own">
+            <strong>我有自己的 API Key</strong>
+            <span>文字和截图可以分别使用不同平台、Key、端点和模型。</span>
+          </button>
+          <button class="choice" data-use="managed">
+            <strong>官方模型套餐</strong>
+            <span>预留会员模式入口，后续可接登录、试用次数和内置模型额度。</span>
+          </button>
+        </div>
+
+        <div class="quick-steps">
+          <div class="step done">
+            <span>1</span>
+            <div>
+              <strong>选择推荐平台</strong>
+              <p>截图识题优先试 Gemini；文字搜题可试 DeepSeek、Groq 或 Qwen。</p>
+            </div>
+          </div>
+          <div class="step">
+            <span>2</span>
+            <div>
+              <strong>填写 API Key</strong>
+              <p>API Key 只保存在浏览器扩展存储中，不上传到开发者服务器。</p>
+            </div>
+          </div>
+          <div class="step">
+            <span>3</span>
+            <div>
+              <strong>测试连接并保存</strong>
+              <p>模型列表会尽量从平台接口获取；官网模型 Code 也可以手动填写。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button class="primary-btn" data-go-panel="modelPanel">开始配置模型</button>
+          <button id="openApiTutorialFromWelcome" class="secondary-btn">查看 API Key 教程</button>
+        </div>
+      </section>
+
+      <section id="modelPanel" class="panel">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">模型服务</span>
+            <h2>文字和截图分开配置</h2>
+          </div>
+          <button id="copyTextToImage" class="secondary-btn">复制文字配置到截图</button>
+        </div>
+
+        <div class="settings-grid">
+          <form class="settings-section" id="textConfigForm">
+            <h3>文字搜题 API</h3>
+            <label>
+              服务商
+              <select id="textApiProvider"></select>
+            </label>
+            <label>
+              API Key
+              <input id="textApiKey" type="password" placeholder="sk-...">
+            </label>
+            <label>
+              API 端点
+              <input id="textApiEndpoint" type="text" placeholder="https://api.example.com/v1/chat/completions">
+            </label>
+            <label>
+              平台模型列表
+              <select id="textModelSelect">
+                <option value="">请先填写 API Key</option>
+              </select>
+            </label>
+            <label>
+              手动模型 Code
+              <input id="textModelManual" type="text" placeholder="例如 qwen3.7-plus">
+            </label>
+            <div class="inline-fields">
+              <label>
+                Max Tokens
+                <input id="textMaxTokens" type="number" min="100" max="100000" value="1500">
+              </label>
+              <label>
+                Temperature
+                <input id="textTemperature" type="number" min="0" max="2" step="0.1" value="0.7">
+              </label>
+            </div>
+            <p id="textProviderHelp" class="help-line"></p>
+            <div class="button-row">
+              <button id="loadTextModels" class="secondary-btn" type="button">获取模型列表</button>
+              <button id="testTextApi" class="secondary-btn" type="button">测试文字 API</button>
+            </div>
+          </form>
+
+          <form class="settings-section" id="imageConfigForm">
+            <h3>截图识题 API</h3>
+            <label>
+              服务商
+              <select id="imageApiProvider"></select>
+            </label>
+            <label>
+              API Key
+              <input id="imageApiKey" type="password" placeholder="可与文字 API 使用不同 Key">
+            </label>
+            <label>
+              API 端点
+              <input id="imageApiEndpoint" type="text" placeholder="https://api.example.com/v1/chat/completions">
+            </label>
+            <label>
+              平台模型列表
+              <select id="imageModelSelect">
+                <option value="">请先填写图片 API Key</option>
+              </select>
+            </label>
+            <label>
+              手动模型 Code
+              <input id="imageModelManual" type="text" placeholder="例如 gemini-2.5-flash 或 qwen3-vl-flash">
+            </label>
+            <div class="inline-fields">
+              <label>
+                Max Tokens
+                <input id="imageMaxTokens" type="number" min="100" max="100000" value="2500">
+              </label>
+              <label>
+                Temperature
+                <input id="imageTemperature" type="number" min="0" max="2" step="0.1" value="0.7">
+              </label>
+            </div>
+            <p id="imageProviderHelp" class="help-line"></p>
+            <div class="button-row">
+              <button id="loadImageModels" class="secondary-btn" type="button">获取模型列表</button>
+              <button id="testImageApi" class="secondary-btn" type="button">测试截图 API</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section id="preferencePanel" class="panel">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">使用偏好</span>
+            <h2>默认行为</h2>
+          </div>
+        </div>
+
+        <div class="settings-section single">
+          <div class="preference-row">
+            <div>
+              <strong>选中文字时显示浮动按钮</strong>
+              <span>关闭后仍可通过插件按钮或快捷入口使用。</span>
+            </div>
+            <label class="switch">
+              <input id="showFloatingIcon" type="checkbox" checked>
+              <span></span>
+            </label>
+          </div>
+          <div class="preference-row">
+            <div>
+              <strong>快速模式</strong>
+              <span>优先直接给答案，减少长篇推理，速度和成本更友好。</span>
+            </div>
+            <label class="switch">
+              <input id="fastMode" type="checkbox" checked>
+              <span></span>
+            </label>
+          </div>
+          <label>
+            回答风格
+            <select id="answerStyle">
+              <option value="direct">直接答案</option>
+              <option value="brief">简要解析</option>
+              <option value="detailed">详细解析</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section id="accountPanel" class="panel">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">商业化预留</span>
+            <h2>账户与套餐</h2>
+          </div>
+        </div>
+
+        <div class="plan-grid">
+          <div class="plan">
+            <strong>免费试用</strong>
+            <span>适合首次体验</span>
+            <p>后续可接入 3 次免费回答限制。</p>
+          </div>
+          <div class="plan highlighted">
+            <strong>基础版 9.9 元</strong>
+            <span>自定义 API Key</span>
+            <p>用户承担模型费用，插件解锁完整配置能力。</p>
+          </div>
+          <div class="plan">
+            <strong>Pro 版 59 元/月</strong>
+            <span>内置模型额度</span>
+            <p>建议绑定服务端额度，避免无限用造成亏损。</p>
+          </div>
+        </div>
+
+        <div class="settings-section single">
+          <label>
+            登录邮箱
+            <input id="accountEmail" type="email" placeholder="暂未接入登录系统">
+          </label>
+          <div class="button-row">
+            <button class="secondary-btn" type="button" disabled>登录/注册</button>
+            <button class="secondary-btn" type="button" disabled>开通会员</button>
+          </div>
+          <p class="help-line">当前版本先完成设置引导和本地配置；登录、支付和次数限制建议下一阶段接服务端。</p>
+        </div>
+      </section>
+
+      <section id="aboutPanel" class="panel">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">关于</span>
+            <h2>版本与隐私</h2>
+          </div>
+        </div>
+
+        <div class="settings-section single">
+          <dl class="about-list">
+            <div>
+              <dt>当前版本</dt>
+              <dd>v2.5.0</dd>
+            </div>
+            <div>
+              <dt>数据存储</dt>
+              <dd>API Key 和配置保存在浏览器扩展存储中。</dd>
+            </div>
+            <div>
+              <dt>请求触发</dt>
+              <dd>选中文字或点击截图按钮后，才会向用户配置的平台发送请求。</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <div id="status" class="status" role="status"></div>
+    </section>
+  </main>
+
+  <script src="options.js"></script>
+</body>
+</html>

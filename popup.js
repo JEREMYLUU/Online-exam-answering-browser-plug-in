@@ -24,6 +24,10 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('imageTemperature').addEventListener('input', updateImageTempValue);
   
   // 教程按钮
+  document.getElementById('openOptions').addEventListener('click', function() {
+    chrome.tabs.create({ url: 'options.html' });
+  });
+
   document.getElementById('openTutorial').addEventListener('click', function() {
     chrome.tabs.create({ url: 'tutorial.html' });
   });
